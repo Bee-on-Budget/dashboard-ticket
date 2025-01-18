@@ -24,7 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ? await AuthService()
               .signInWithEmailAndPassword(identifier, password) // Email login
           : await AuthService()
-              .signInWithPhoneAndPassword(identifier, password); // Phone login
+              .signInWithEmailAndPassword(identifier, password); // Phone login
 
       if (user != null) {
         Navigator.pushReplacementNamed(context, '/home');

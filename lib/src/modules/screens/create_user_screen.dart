@@ -13,16 +13,31 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _companyController = TextEditingController();
 
-  bool isEmailSelected = true; // Toggle between Email and Phone
+  bool isEmailSelected = true;
+  List<String> companies = [];
 
-  // Register user with email and password
   void _registerWithEmail() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
+    final username = _usernameController.text.trim();
 
-    final user =
-        await AuthService().createUserWithEmailAndPassword(email, password);
+    if (username.isEmpty || companies.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all fields')),
+      );
+      return;
+    }
+
+    final user = await AuthService().createUserWithEmailAndPassword(
+      email,
+      password,
+      username,
+      companies,
+    );
+
     if (user != null) {
       Navigator.pushReplacementNamed(context, '/home');
     } else {
@@ -32,104 +47,243 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     }
   }
 
-  // Register user with phone number and password
   void _registerWithPhone() async {
     final phone = _phoneController.text.trim();
     final password = _passwordController.text.trim();
+    final username = _usernameController.text.trim();
 
-    final user =
-        await AuthService().createUserWithPhoneAndPassword(phone, password);
+    if (username.isEmpty || companies.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all fields')),
+      );
+      return;
+    }
+
+    final user = await AuthService().createUserWithPhoneAndPassword(
+      phone,
+      password,
+      username,
+      companies,
+    );
+
     if (user != null) {
       Navigator.pushReplacementNamed(context, '/home');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Registration failed')),
       );
+    }
+  }
+
+  void _addCompany() {
+    final company = _companyController.text.trim();
+    if (company.isNotEmpty) {
+      setState(() {
+        companies.add(company);
+        _companyController.clear();
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Create Account')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Toggle between Email and Phone
-            Row(
+      appBar: AppBar(
+        title: const Text('Create Account'),
+        backgroundColor: Colors.blue.shade700,
+        elevation: 0,
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.blue.shade300, Colors.blue.shade700],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: SingleChildScrollView(
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                ChoiceChip(
-                  label: const Text('Email'),
-                  selected: isEmailSelected,
-                  onSelected: (value) {
-                    setState(() {
-                      isEmailSelected = true;
-                    });
-                  },
+                const SizedBox(height: 40),
+                const Text(
+                  'Create a New Account',
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
-                const SizedBox(width: 10),
-                ChoiceChip(
-                  label: const Text('Phone'),
-                  selected: !isEmailSelected,
-                  onSelected: (value) {
-                    setState(() {
-                      isEmailSelected = false;
-                    });
-                  },
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Email'),
+                      selected: isEmailSelected,
+                      onSelected: (value) {
+                        setState(() {
+                          isEmailSelected = true;
+                        });
+                      },
+                      selectedColor: Colors.blue.shade700,
+                      backgroundColor: Colors.grey[200],
+                      labelStyle: TextStyle(
+                        color: isEmailSelected
+                            ? Colors.white
+                            : Colors.blue.shade700,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    ChoiceChip(
+                      label: const Text('Phone'),
+                      selected: !isEmailSelected,
+                      onSelected: (value) {
+                        setState(() {
+                          isEmailSelected = false;
+                        });
+                      },
+                      selectedColor: Colors.blue.shade700,
+                      backgroundColor: Colors.grey[200],
+                      labelStyle: TextStyle(
+                        color: !isEmailSelected
+                            ? Colors.white
+                            : Colors.blue.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 30),
+                Card(
+                  elevation: 10,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      children: [
+                        _buildTextField(
+                          controller: _usernameController,
+                          label: 'Username',
+                          icon: Icons.person,
+                        ),
+                        const SizedBox(height: 15),
+                        if (isEmailSelected) ...[
+                          _buildTextField(
+                            controller: _emailController,
+                            label: 'Email',
+                            keyboardType: TextInputType.emailAddress,
+                            icon: Icons.email,
+                          ),
+                          const SizedBox(height: 15),
+                          _buildTextField(
+                            controller: _passwordController,
+                            label: 'Password',
+                            obscureText: true,
+                            icon: Icons.lock,
+                          ),
+                        ],
+                        if (!isEmailSelected) ...[
+                          _buildTextField(
+                            controller: _phoneController,
+                            label: 'Phone Number',
+                            keyboardType: TextInputType.phone,
+                            icon: Icons.phone,
+                          ),
+                          const SizedBox(height: 15),
+                          _buildTextField(
+                            controller: _passwordController,
+                            label: 'Password',
+                            obscureText: true,
+                            icon: Icons.lock,
+                          ),
+                        ],
+                        const SizedBox(height: 20),
+                        _buildTextField(
+                          controller: _companyController,
+                          label: 'Add Company',
+                          icon: Icons.business,
+                        ),
+                        const SizedBox(height: 10),
+                        ElevatedButton(
+                          onPressed: _addCompany,
+                          child: const Text('Add Company'),
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          children: companies
+                              .map((company) => Chip(label: Text(company)))
+                              .toList(),
+                        ),
+                        const SizedBox(height: 20),
+                        _buildSubmitButton(
+                          label: isEmailSelected
+                              ? 'Register with Email'
+                              : 'Register with Phone',
+                          onPressed: isEmailSelected
+                              ? _registerWithEmail
+                              : _registerWithPhone,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-
-            // Email Registration
-            if (isEmailSelected)
-              Column(
-                children: [
-                  TextField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(labelText: 'Email'),
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                  TextField(
-                    controller: _passwordController,
-                    decoration: const InputDecoration(labelText: 'Password'),
-                    obscureText: true,
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: _registerWithEmail,
-                    child: const Text('Register with Email'),
-                  ),
-                ],
-              ),
-
-            // Phone Registration
-            if (!isEmailSelected)
-              Column(
-                children: [
-                  TextField(
-                    controller: _phoneController,
-                    decoration:
-                        const InputDecoration(labelText: 'Phone Number'),
-                    keyboardType: TextInputType.phone,
-                  ),
-                  TextField(
-                    controller: _passwordController,
-                    decoration: const InputDecoration(labelText: 'Password'),
-                    obscureText: true,
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: _registerWithPhone,
-                    child: const Text('Register with Phone'),
-                  ),
-                ],
-              ),
-          ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    bool obscureText = false,
+    TextInputType? keyboardType,
+    required IconData icon,
+  }) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        prefixIcon: Icon(icon, color: Colors.blue.shade700),
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.blue),
+        filled: true,
+        fillColor: Colors.grey[200],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(vertical: 15.0, horizontal: 20.0),
+      ),
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+    );
+  }
+
+  Widget _buildSubmitButton({
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.blue.shade700,
+        padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 30.0),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+        elevation: 5,
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+            fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
       ),
     );
   }
