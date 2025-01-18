@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'src/modules/screens/home_screen.dart';
+import 'src/modules/screens/login_screen.dart';
+import 'src/modules/screens/create_user_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +24,12 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Firestore Example',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: const HomeScreen(),
+      initialRoute: '/login',
+      routes: {
+        '/login': (context) => const LoginScreen(),
+        '/createUser': (context) => const CreateUserScreen(),
+        '/home': (context) => const HomeScreen(),
+      },
     );
   }
 }
