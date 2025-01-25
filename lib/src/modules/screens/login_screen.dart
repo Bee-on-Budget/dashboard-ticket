@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../service/auth_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -20,14 +19,19 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text.trim();
 
     if (identifier.isNotEmpty && password.isNotEmpty) {
-      final user = isEmailSelected
-          ? await AuthService()
-              .signInWithEmailAndPassword(identifier, password) // Email login
-          : await AuthService()
-              .signInWithEmailAndPassword(identifier, password); // Phone login
+      final user =
+          await AuthService().signInWithEmailAndPassword(identifier, password);
 
       if (user != null) {
-        Navigator.pushReplacementNamed(context, '/home');
+        final role = await AuthService().getRole(user.uid);
+
+        if (role == 'admin') {
+          Navigator.pushReplacementNamed(
+              context, '/home'); // Admins go to CreateUser
+        } else {
+          Navigator.pushReplacementNamed(
+              context, '/home'); // Regular users go to Home
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -136,12 +140,6 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 20),
 
             // Navigation to registration screen
-            TextButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/createUser');
-              },
-              child: const Text('Create an Account'),
-            ),
           ],
         ),
       ),

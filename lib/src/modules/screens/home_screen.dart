@@ -7,7 +7,25 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Home Screen')),
-      body: const Center(child: Text('Welcome to the Home Screen')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/createUser');
+              },
+              child: const Text('Create User'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/tickets');
+              },
+              child: const Text('View Tickets'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

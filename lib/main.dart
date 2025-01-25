@@ -4,6 +4,7 @@ import 'firebase_options.dart';
 import 'src/modules/screens/home_screen.dart';
 import 'src/modules/screens/login_screen.dart';
 import 'src/modules/screens/create_user_screen.dart';
+import 'src/modules/screens/tickets_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +30,8 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/createUser': (context) => const CreateUserScreen(),
         '/home': (context) => const HomeScreen(),
+        '/tickets': (context) => const TicketsScreen(),
+        // No route needed for TicketDetailsScreen as it uses MaterialPageRoute
       },
     );
   }
