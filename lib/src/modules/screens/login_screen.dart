@@ -1,4 +1,7 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../service/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -71,76 +74,143 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double width = min(screenWidth * 0.4, 600); // Wider for big screens
+
     return Scaffold(
-      appBar: AppBar(title: Text('Login')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Toggle between Email and Phone login
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ChoiceChip(
-                  label: const Text('Email'),
-                  selected: isEmailSelected,
-                  onSelected: (value) {
-                    setState(() {
-                      isEmailSelected = true;
-                      _identifierController.clear(); // Clear the input
-                    });
-                  },
+      backgroundColor: const Color(0xFFf5f5f5), // Light grey background
+      body: Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: width * 0.1),
+          child: Stack(
+            alignment: Alignment.topCenter,
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 40, vertical: 60),
+                constraints: BoxConstraints(maxWidth: width),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 10,
+                      offset: Offset(0, 5),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 10),
-                ChoiceChip(
-                  label: const Text('Phone'),
-                  selected: !isEmailSelected,
-                  onSelected: (value) {
-                    setState(() {
-                      isEmailSelected = false;
-                      _identifierController.clear(); // Clear the input
-                    });
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Log In",
+                      style: GoogleFonts.poppins(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF4F4F4F),
+                      ),
+                    ),
+                    SizedBox(height: 30),
+                    // Toggle between Email and Phone login
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ChoiceChip(
+                          label: const Text('Email'),
+                          selected: isEmailSelected,
+                          onSelected: (value) {
+                            setState(() {
+                              isEmailSelected = true;
+                              _identifierController.clear();
+                            });
+                          },
+                        ),
+                        const SizedBox(width: 20),
+                        ChoiceChip(
+                          label: const Text('Phone'),
+                          selected: !isEmailSelected,
+                          onSelected: (value) {
+                            setState(() {
+                              isEmailSelected = false;
+                              _identifierController.clear();
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 30),
 
-            // Input field for email or phone
-            TextField(
-              controller: _identifierController,
-              decoration: InputDecoration(
-                labelText: isEmailSelected ? 'Email' : 'Phone Number',
+                    // Input field for email or phone
+                    TextField(
+                      controller: _identifierController,
+                      decoration: InputDecoration(
+                        labelText: isEmailSelected ? 'Email' : 'Phone Number',
+                        border: OutlineInputBorder(),
+                        prefixIcon:
+                            Icon(isEmailSelected ? Icons.email : Icons.phone),
+                      ),
+                      keyboardType: isEmailSelected
+                          ? TextInputType.emailAddress
+                          : TextInputType.phone,
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Password field
+                    TextField(
+                      controller: _passwordController,
+                      decoration: const InputDecoration(
+                        labelText: 'Password',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.lock),
+                      ),
+                      obscureText: true,
+                    ),
+                    const SizedBox(height: 30),
+
+                    // Login button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _login,
+                        child: const Text('Login'),
+                        style: ElevatedButton.styleFrom(
+                          foregroundColor: Colors.white, // Text color
+                          backgroundColor: Color(0XFF44564A),
+                          padding: EdgeInsets.symmetric(vertical: 18),
+                          textStyle: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 5,
+                        ),
+                      ),
+                    ),
+                    Center(
+                      child: TextButton(
+                        onPressed: _forgotPassword,
+                        child: const Text('Forgot Password?'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Color(0XFF44564A),
+                          textStyle: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              keyboardType: isEmailSelected
-                  ? TextInputType.emailAddress
-                  : TextInputType.phone,
-            ),
-            const SizedBox(height: 10),
-
-            // Password field
-            TextField(
-              controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
-              obscureText: true,
-            ),
-            const SizedBox(height: 20),
-
-            // Login button
-            ElevatedButton(
-              onPressed: _login,
-              child: const Text('Login'),
-            ),
-            TextButton(
-              onPressed: _forgotPassword,
-              child: const Text('Forgot Password?'),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Navigation to registration screen
-          ],
+              Positioned(
+                top: -70,
+                child: Image.asset(
+                  'assets/images/logo-round.png',
+                  width: width * 0.2,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

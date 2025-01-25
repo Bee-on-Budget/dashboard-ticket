@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'ticket_details_screen.dart';
+import 'ticket_detail_screen.dart';
 
 class TicketsScreen extends StatelessWidget {
   const TicketsScreen({Key? key}) : super(key: key);
@@ -8,7 +8,10 @@ class TicketsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tickets')),
+      appBar: AppBar(
+        title: const Text('Tickets'),
+        backgroundColor: Colors.teal,
+      ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('tickets').snapshots(),
         builder: (context, snapshot) {
@@ -31,8 +34,10 @@ class TicketsScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            TicketDetailsScreen(ticketData: data),
+                        builder: (context) => TicketDetailScreen(
+                          ticketId: doc.id,
+                          ticketData: data,
+                        ),
                       ),
                     );
                   },

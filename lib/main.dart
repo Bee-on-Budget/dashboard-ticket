@@ -4,11 +4,10 @@ import 'firebase_options.dart';
 import 'src/modules/screens/home_screen.dart';
 import 'src/modules/screens/login_screen.dart';
 import 'src/modules/screens/create_user_screen.dart';
-import 'src/modules/screens/tickets_screen.dart';
+import 'src/modules/screens/tickets_screen.dart'; // Ensure this is correct
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -24,14 +23,15 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Firestore Example',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      theme: ThemeData(
+        primarySwatch: Colors.teal,
+      ),
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginScreen(),
         '/createUser': (context) => const CreateUserScreen(),
         '/home': (context) => const HomeScreen(),
         '/tickets': (context) => const TicketsScreen(),
-        // No route needed for TicketDetailsScreen as it uses MaterialPageRoute
       },
     );
   }

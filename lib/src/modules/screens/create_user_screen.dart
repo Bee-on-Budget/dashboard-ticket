@@ -21,37 +21,13 @@ class _CreateUserScreenState extends State<CreateUserScreen>
   bool isEmailSelected = true;
   List<String> companies = [];
   String _selectedRole = 'user';
-
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
+  final Color primaryColor =
+      Color(0xFF44564A); // Updated to use the specified color
 
   @override
   void initState() {
     super.initState();
     _checkAdminAccess();
-
-    _animationController =
-        AnimationController(vsync: this, duration: Duration(seconds: 1));
-
-    _fadeAnimation =
-        CurvedAnimation(parent: _animationController, curve: Curves.easeIn);
-
-    _slideAnimation = Tween<Offset>(
-      begin: Offset(0, 0.5),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    ));
-
-    _animationController.forward();
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
   }
 
   void _checkAdminAccess() async {
@@ -146,47 +122,44 @@ class _CreateUserScreenState extends State<CreateUserScreen>
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Account'),
-        backgroundColor: Colors.blue.shade700,
+        backgroundColor: primaryColor,
         elevation: 0,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.blue.shade300, Colors.blue.shade700],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+        title: Text('Create Account', style: TextStyle(color: Colors.white)),
+        automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.home, color: Colors.white),
+            onPressed: () {
+              Navigator.pushReplacementNamed(context, '/home');
+            },
           ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 40),
-                    const Text(
-                      'Create a New Account',
-                      style: TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    _buildChoiceChips(),
-                    const SizedBox(height: 30),
-                    _buildFormCard(),
-                  ],
+        ],
+      ),
+      body: SingleChildScrollView(
+        child: Center(
+          child: Container(
+            width: screenWidth > 800 ? 800 : screenWidth,
+            padding: EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  'Create a New Account',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: primaryColor,
+                  ),
                 ),
-              ),
+                SizedBox(height: 20),
+                _buildChoiceChips(),
+                SizedBox(height: 20),
+                _buildForm(),
+              ],
             ),
           ),
         ),
@@ -199,164 +172,103 @@ class _CreateUserScreenState extends State<CreateUserScreen>
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         ChoiceChip(
-          label: const Text('Email'),
+          label: Text('Email'),
           selected: isEmailSelected,
           onSelected: (value) {
             setState(() {
               isEmailSelected = true;
             });
           },
-          selectedColor: Colors.blue.shade700,
-          backgroundColor: Colors.grey[200],
+          selectedColor: primaryColor,
           labelStyle: TextStyle(
-            color: isEmailSelected ? Colors.white : Colors.blue.shade700,
+            color: isEmailSelected ? Colors.white : Colors.black,
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         ChoiceChip(
-          label: const Text('Phone'),
+          label: Text('Phone'),
           selected: !isEmailSelected,
           onSelected: (value) {
             setState(() {
               isEmailSelected = false;
             });
           },
-          selectedColor: Colors.blue.shade700,
-          backgroundColor: Colors.grey[200],
+          selectedColor: primaryColor,
           labelStyle: TextStyle(
-            color: !isEmailSelected ? Colors.white : Colors.blue.shade700,
+            color: !isEmailSelected ? Colors.white : Colors.black,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildFormCard() {
-    return Card(
-      elevation: 10,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            _buildTextField(
-              controller: _usernameController,
-              label: 'Username',
-              icon: Icons.person,
-            ),
-            const SizedBox(height: 15),
-            if (isEmailSelected) ...[
-              _buildTextField(
-                controller: _emailController,
-                label: 'Email',
-                keyboardType: TextInputType.emailAddress,
-                icon: Icons.email,
-              ),
-              const SizedBox(height: 15),
-              _buildTextField(
-                controller: _passwordController,
-                label: 'Password',
-                obscureText: true,
-                icon: Icons.lock,
-              ),
-            ],
-            if (!isEmailSelected) ...[
-              _buildTextField(
-                controller: _phoneController,
-                label: 'Phone Number',
-                keyboardType: TextInputType.phone,
-                icon: Icons.phone,
-              ),
-              const SizedBox(height: 15),
-              _buildTextField(
-                controller: _passwordController,
-                label: 'Password',
-                obscureText: true,
-                icon: Icons.lock,
-              ),
-            ],
-            const SizedBox(height: 20),
-            _buildTextField(
-              controller: _companyController,
-              label: 'Add Company',
-              icon: Icons.business,
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: _addCompany,
-              child: const Text(
-                'Add Company',
-                style: TextStyle(
-                  color: Colors.white, // White text color
-                  fontWeight: FontWeight.bold, // Bold text for emphasis
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    Colors.blue.shade700, // Button background color
-                padding: const EdgeInsets.symmetric(
-                    vertical: 14.0, horizontal: 20.0),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.0), // Rounded corners
-                ),
-                elevation: 5, // Slight elevation for a raised effect
-              ),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              children: companies
-                  .map((company) => Chip(
-                        label: Text(company),
-                        deleteIcon: Icon(Icons.close),
-                        onDeleted: () {
-                          setState(() {
-                            companies.remove(company);
-                          });
-                        },
-                      ))
-                  .toList(),
-            ),
-            const SizedBox(height: 20),
-            _buildRoleDropdown(),
-            const SizedBox(height: 20),
-            _buildSubmitButton(
-              label: isEmailSelected
-                  ? 'Register with Email'
-                  : 'Register with Phone',
-              onPressed:
-                  isEmailSelected ? _registerWithEmail : _registerWithPhone,
-            ),
-          ],
+  Widget _buildForm() {
+    return Column(
+      children: [
+        _buildTextField(_usernameController, 'Username', Icons.person),
+        SizedBox(height: 15),
+        if (isEmailSelected)
+          _buildTextField(_emailController, 'Email', Icons.email,
+              keyboardType: TextInputType.emailAddress),
+        if (!isEmailSelected)
+          _buildTextField(_phoneController, 'Phone', Icons.phone,
+              keyboardType: TextInputType.phone),
+        SizedBox(height: 15),
+        _buildTextField(_passwordController, 'Password', Icons.lock,
+            isPassword: true),
+        SizedBox(height: 15),
+        _buildTextField(_companyController, 'Add Company', Icons.business),
+        SizedBox(height: 10),
+        ElevatedButton(
+          onPressed: _addCompany,
+          child: Text('Add Company', style: TextStyle(color: Colors.white)),
+          style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
         ),
-      ),
+        SizedBox(height: 10),
+        Wrap(
+          children: companies
+              .map((company) => Chip(
+                    label: Text(company),
+                    deleteIcon: Icon(Icons.close),
+                    onDeleted: () {
+                      setState(() {
+                        companies.remove(company);
+                      });
+                    },
+                  ))
+              .toList(),
+        ),
+        SizedBox(height: 20),
+        _buildRoleDropdown(),
+        SizedBox(height: 20),
+        ElevatedButton(
+          onPressed: isEmailSelected ? _registerWithEmail : _registerWithPhone,
+          child: Text(
+              isEmailSelected ? 'Register with Email' : 'Register with Phone',
+              style: TextStyle(color: Colors.white)),
+          style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+        ),
+      ],
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    bool obscureText = false,
-    TextInputType? keyboardType,
-    required IconData icon,
-  }) {
+  Widget _buildTextField(
+      TextEditingController controller, String label, IconData icon,
+      {bool isPassword = false, TextInputType? keyboardType}) {
     return TextField(
       controller: controller,
       decoration: InputDecoration(
-        prefixIcon: Icon(icon, color: Colors.blue.shade700),
         labelText: label,
-        labelStyle: const TextStyle(color: Colors.blue),
+        prefixIcon: Icon(icon, color: primaryColor),
         filled: true,
-        fillColor: Colors.grey[200],
+        fillColor: Colors.grey[100],
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.0),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: Colors.grey.shade300),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(vertical: 15.0, horizontal: 20.0),
+        contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 15),
       ),
-      obscureText: obscureText,
+      obscureText: isPassword,
       keyboardType: keyboardType,
     );
   }
@@ -366,48 +278,18 @@ class _CreateUserScreenState extends State<CreateUserScreen>
       value: _selectedRole,
       decoration: InputDecoration(
         labelText: 'Select Role',
-        prefixIcon: Icon(Icons.security, color: Colors.blue.shade700),
+        prefixIcon: Icon(Icons.security, color: primaryColor),
         filled: true,
-        fillColor: Colors.grey[200],
+        fillColor: Colors.grey[100],
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.0),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: Colors.grey.shade300),
         ),
       ),
-      items: <String>['user', 'admin']
-          .map<DropdownMenuItem<String>>((String value) {
-        return DropdownMenuItem<String>(
-          value: value,
-          child: Text(value),
-        );
-      }).toList(),
-      onChanged: (String? newValue) {
-        setState(() {
-          _selectedRole = newValue!;
-        });
-      },
-    );
-  }
-
-  Widget _buildSubmitButton({
-    required String label,
-    required VoidCallback onPressed,
-  }) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.blue.shade700,
-        padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 30.0),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
-        ),
-        elevation: 5,
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-            fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-      ),
+      items: ['user', 'admin']
+          .map((role) => DropdownMenuItem(value: role, child: Text(role)))
+          .toList(),
+      onChanged: (role) => setState(() => _selectedRole = role!),
     );
   }
 }
