@@ -21,8 +21,7 @@ class _CreateUserScreenState extends State<CreateUserScreen>
   bool isEmailSelected = true;
   List<String> companies = [];
   String _selectedRole = 'user';
-  final Color primaryColor =
-      Color(0xFF44564A); // Updated to use the specified color
+  final Color primaryColor = Color(0xFF44564A);
 
   @override
   void initState() {
