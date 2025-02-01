@@ -1,12 +1,81 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
-import 'create_user_screen.dart';
-import 'tickets_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);
+
+  Future<Map<String, int>> _fetchStatistics() async {
+    final snapshot =
+        await FirebaseFirestore.instance.collection('tickets').get();
+    final tickets = snapshot.docs;
+
+    int totalTickets = tickets.length;
+    int openTickets =
+        tickets.where((ticket) => ticket['status'] == 'Open').length;
+    int inProgressTickets =
+        tickets.where((ticket) => ticket['status'] == 'In Progress').length;
+    int closedTickets =
+        tickets.where((ticket) => ticket['status'] == 'Closed').length;
+
+    return {
+      'total_tickets': totalTickets,
+      'open_tickets': openTickets,
+      'in_progress': inProgressTickets,
+      'closed_tickets': closedTickets,
+    };
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchTicketStatus() async {
+    final snapshot =
+        await FirebaseFirestore.instance.collection('tickets').get();
+    final tickets = snapshot.docs;
+
+    Map<String, int> statusCounts = {
+      'Open': 0,
+      'In Progress': 0,
+      'Closed': 0,
+    };
+
+    for (var ticket in tickets) {
+      String status = ticket['status'];
+      if (statusCounts.containsKey(status)) {
+        statusCounts[status] = statusCounts[status]! + 1;
+      }
+    }
+
+    return statusCounts.entries
+        .map((entry) => {
+              'status': entry.key,
+              'value': entry.value,
+            })
+        .toList();
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchTicketsOverTime() async {
+    final snapshot =
+        await FirebaseFirestore.instance.collection('tickets').get();
+    final tickets = snapshot.docs;
+
+    Map<String, int> ticketsOverTime = {};
+
+    for (var ticket in tickets) {
+      String date = ticket['createdDate'].toDate().toString().split(' ')[0];
+      if (ticketsOverTime.containsKey(date)) {
+        ticketsOverTime[date] = ticketsOverTime[date]! + 1;
+      } else {
+        ticketsOverTime[date] = 1;
+      }
+    }
+
+    return ticketsOverTime.entries
+        .map((entry) => {
+              'date': entry.key,
+              'count': entry.value,
+            })
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,40 +88,78 @@ class HomeScreen extends StatelessWidget {
             const Text('Dashboard Overview',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
-            _buildStatisticsGrid(),
+            FutureBuilder<Map<String, int>>(
+              future: _fetchStatistics(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+                final stats = snapshot.data!;
+                return _buildStatisticsGrid(stats);
+              },
+            ),
             const SizedBox(height: 20),
             const Text('Ticket Status Distribution',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
-            _buildPieChart(),
+            FutureBuilder<List<Map<String, dynamic>>>(
+              future: _fetchTicketStatus(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+                final statusData = snapshot.data!;
+                return _buildPieChart(statusData);
+              },
+            ),
             const SizedBox(height: 20),
             const Text('Tickets Over Time',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
-            _buildLineChart(),
+            FutureBuilder<List<Map<String, dynamic>>>(
+              future: _fetchTicketsOverTime(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+                final ticketsOverTime = snapshot.data!;
+                return _buildLineChart(ticketsOverTime);
+              },
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatisticsGrid() {
+  Widget _buildStatisticsGrid(Map<String, int> stats) {
     return StaggeredGrid.count(
       crossAxisCount: 4,
       mainAxisSpacing: 16.0,
       crossAxisSpacing: 16.0,
-      children: List.generate(4, (index) => _buildStatisticCard(index)),
+      children: [
+        _buildStatisticCard(
+            'Total Tickets', stats['total_tickets'].toString(), Colors.blue),
+        _buildStatisticCard(
+            'Open Tickets', stats['open_tickets'].toString(), Colors.orange),
+        _buildStatisticCard(
+            'In Progress', stats['in_progress'].toString(), Colors.purple),
+        _buildStatisticCard(
+            'Closed Tickets', stats['closed_tickets'].toString(), Colors.green),
+      ],
     );
   }
 
-  Widget _buildStatisticCard(int index) {
-    final List<Map<String, dynamic>> stats = [
-      {'title': 'Total Tickets', 'value': '120', 'color': Colors.blue},
-      {'title': 'Open Tickets', 'value': '45', 'color': Colors.orange},
-      {'title': 'In Progress', 'value': '30', 'color': Colors.purple},
-      {'title': 'Closed Tickets', 'value': '45', 'color': Colors.green},
-    ];
-
+  Widget _buildStatisticCard(String title, String value, Color color) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
@@ -64,7 +171,7 @@ class HomeScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              stats[index]['title'],
+              title,
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -72,11 +179,11 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              stats[index]['value'],
+              value,
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: stats[index]['color'],
+                color: color,
               ),
             ),
           ],
@@ -85,46 +192,24 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPieChart() {
+  Widget _buildPieChart(List<Map<String, dynamic>> statusData) {
     return SizedBox(
       height: 300,
       child: PieChart(
         PieChartData(
-          sections: [
-            PieChartSectionData(
-              value: 45,
-              color: Colors.blue,
-              title: 'Open',
+          sections: statusData.map((data) {
+            return PieChartSectionData(
+              value: data['value'].toDouble(),
+              color: _getColor(data['status']),
+              title: data['status'],
               radius: 50,
               titleStyle: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
-            ),
-            PieChartSectionData(
-              value: 30,
-              color: Colors.orange,
-              title: 'In Progress',
-              radius: 50,
-              titleStyle: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            PieChartSectionData(
-              value: 45,
-              color: Colors.green,
-              title: 'Closed',
-              radius: 50,
-              titleStyle: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ],
+            );
+          }).toList(),
           centerSpaceRadius: 60,
           sectionsSpace: 0,
         ),
@@ -132,7 +217,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLineChart() {
+  Widget _buildLineChart(List<Map<String, dynamic>> ticketsOverTime) {
     return SizedBox(
       height: 300,
       child: LineChart(
@@ -144,19 +229,18 @@ class HomeScreen extends StatelessWidget {
             border: Border.all(color: const Color(0xff37434d), width: 1),
           ),
           minX: 0,
-          maxX: 11,
+          maxX: ticketsOverTime.length.toDouble() - 1,
           minY: 0,
-          maxY: 6,
+          maxY: ticketsOverTime
+              .map((e) => e['count'])
+              .reduce((a, b) => a > b ? a : b)
+              .toDouble(),
           lineBarsData: [
             LineChartBarData(
-              spots: const [
-                FlSpot(0, 3),
-                FlSpot(2, 1),
-                FlSpot(4, 4),
-                FlSpot(6, 2),
-                FlSpot(8, 5),
-                FlSpot(10, 3),
-              ],
+              spots: ticketsOverTime.asMap().entries.map((entry) {
+                return FlSpot(
+                    entry.key.toDouble(), entry.value['count'].toDouble());
+              }).toList(),
               isCurved: true,
               color: Colors.blue,
               dotData: FlDotData(show: false),
@@ -167,119 +251,17 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-}
 
-class MergedScreen extends StatefulWidget {
-  @override
-  _MergedScreenState createState() => _MergedScreenState();
-}
-
-class _MergedScreenState extends State<MergedScreen> {
-  int _currentIndex = 0; // Default index is 0 (HomeScreen)
-
-  final List<Widget> _pages = [
-    const HomeScreen(), // HomeScreen is the dashboard
-    CreateUserScreen(),
-    TicketsScreen(),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: <Widget>[
-            DrawerHeader(
-              decoration: const BoxDecoration(
-                color: Color(0xFF44564A),
-                image: DecorationImage(
-                  image: AssetImage('assets/images/drawer_header.jpg'),
-                  fit: BoxFit.cover,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: const [
-                  Text(
-                    'Dashboard',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Welcome to the Admin Panel',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.dashboard, color: Color(0xFF44564A)),
-              title: const Text(
-                'Dashboard',
-                style: TextStyle(fontSize: 16),
-              ),
-              onTap: () {
-                setState(() {
-                  _currentIndex = 0; // Set index to 0 for HomeScreen
-                });
-                Navigator.pop(context); // Close the drawer
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.person_add, color: Color(0xFF44564A)),
-              title: const Text(
-                'Create User',
-                style: TextStyle(fontSize: 16),
-              ),
-              onTap: () {
-                setState(() {
-                  _currentIndex = 1; // Set index to 1 for CreateUserScreen
-                });
-                Navigator.pop(context); // Close the drawer
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.list, color: Color(0xFF44564A)),
-              title: const Text(
-                'Tickets',
-                style: TextStyle(fontSize: 16),
-              ),
-              onTap: () {
-                setState(() {
-                  _currentIndex = 2; // Set index to 2 for TicketsScreen
-                });
-                Navigator.pop(context); // Close the drawer
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text(
-                'Logout',
-                style: TextStyle(fontSize: 16, color: Colors.red),
-              ),
-              onTap: () {
-                _signOut(context);
-              },
-            ),
-          ],
-        ),
-      ),
-      body: _pages[_currentIndex], // Display the selected page
-    );
-  }
-
-  Future<void> _signOut(BuildContext context) async {
-    await FirebaseAuth.instance.signOut();
-    Navigator.pushReplacementNamed(context, '/login');
+  Color _getColor(String status) {
+    switch (status) {
+      case 'Open':
+        return Colors.blue;
+      case 'In Progress':
+        return Colors.orange;
+      case 'Closed':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
   }
 }

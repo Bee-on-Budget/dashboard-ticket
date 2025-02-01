@@ -13,7 +13,7 @@ class _MergedScreenState extends State<MergedScreen> {
   int _currentIndex = 0; // Default index is 0 (HomeScreen)
 
   final List<Widget> _pages = [
-    const HomeScreen(), // HomeScreen is the dashboard
+    HomeScreen(), // HomeScreen is the dashboard
     CreateUserScreen(),
     TicketsScreen(),
   ];
