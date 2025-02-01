@@ -81,7 +81,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(selectedTicketId == null ? 'Tickets' : 'Ticket Details'),
-        backgroundColor: Colors.teal,
+        backgroundColor: Theme.of(context).primaryColor,
         leading: selectedTicketId != null
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
@@ -142,9 +142,9 @@ class _TicketsScreenState extends State<TicketsScreen> {
               });
             },
             borderRadius: BorderRadius.circular(10),
-            color: Colors.teal,
+            color: Theme.of(context).primaryColor,
             selectedColor: Colors.white,
-            fillColor: Colors.teal,
+            fillColor: Theme.of(context).primaryColor,
             children: const [
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8.0),
@@ -180,8 +180,9 @@ class _TicketsScreenState extends State<TicketsScreen> {
                   builder: (context, child) {
                     return Theme(
                       data: ThemeData.light().copyWith(
-                        primaryColor: Colors.teal,
-                        colorScheme: ColorScheme.light(primary: Colors.teal),
+                        primaryColor: Theme.of(context).primaryColor,
+                        colorScheme: ColorScheme.light(
+                            primary: Theme.of(context).primaryColor),
                       ),
                       child: child!,
                     );
@@ -201,7 +202,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                     : 'Select Date Range',
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
+                backgroundColor: Theme.of(context).primaryColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),

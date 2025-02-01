@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/services.dart';
 import '../../service/auth_service.dart';
 
 class CreateUserScreen extends StatefulWidget {
@@ -10,8 +8,7 @@ class CreateUserScreen extends StatefulWidget {
   _CreateUserScreenState createState() => _CreateUserScreenState();
 }
 
-class _CreateUserScreenState extends State<CreateUserScreen>
-    with SingleTickerProviderStateMixin {
+class _CreateUserScreenState extends State<CreateUserScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
@@ -21,23 +18,6 @@ class _CreateUserScreenState extends State<CreateUserScreen>
   bool isEmailSelected = true;
   List<String> companies = [];
   String _selectedRole = 'user';
-  final Color primaryColor = Color(0xFF44564A);
-
-  @override
-  void initState() {
-    super.initState();
-    _checkAdminAccess();
-  }
-
-  void _checkAdminAccess() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final role = await AuthService().getRole(user.uid);
-      if (role != 'admin') {
-        Navigator.pushReplacementNamed(context, '/home');
-      }
-    }
-  }
 
   void _registerWithEmail() async {
     final email = _emailController.text.trim();
@@ -113,7 +93,7 @@ class _CreateUserScreenState extends State<CreateUserScreen>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => Center(
+      builder: (context) => const Center(
         child: CircularProgressIndicator(),
       ),
     );
@@ -125,38 +105,41 @@ class _CreateUserScreenState extends State<CreateUserScreen>
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: primaryColor,
-        elevation: 0,
-        title: Text('Create Account', style: TextStyle(color: Colors.white)),
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.home, color: Colors.white),
-            onPressed: () {
-              Navigator.pushReplacementNamed(context, '/home');
-            },
-          ),
-        ],
+        title: const Text('Create Account'),
+        backgroundColor: Theme.of(context).primaryColor,
       ),
       body: SingleChildScrollView(
         child: Center(
           child: Container(
-            width: screenWidth > 800 ? 800 : screenWidth,
-            padding: EdgeInsets.all(20.0),
+            width: screenWidth > 800
+                ? 600
+                : screenWidth - 40, // Adjust width for responsiveness
+            padding: const EdgeInsets.all(20.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  spreadRadius: 5,
+                  blurRadius: 7,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
                   'Create a New Account',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: primaryColor,
-                  ),
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 _buildChoiceChips(),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 _buildForm(),
               ],
             ),
@@ -171,28 +154,28 @@ class _CreateUserScreenState extends State<CreateUserScreen>
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         ChoiceChip(
-          label: Text('Email'),
+          label: const Text('Email'),
           selected: isEmailSelected,
           onSelected: (value) {
             setState(() {
               isEmailSelected = true;
             });
           },
-          selectedColor: primaryColor,
+          selectedColor: Theme.of(context).primaryColor,
           labelStyle: TextStyle(
             color: isEmailSelected ? Colors.white : Colors.black,
           ),
         ),
-        SizedBox(width: 10),
+        const SizedBox(width: 10),
         ChoiceChip(
-          label: Text('Phone'),
+          label: const Text('Phone'),
           selected: !isEmailSelected,
           onSelected: (value) {
             setState(() {
               isEmailSelected = false;
             });
           },
-          selectedColor: primaryColor,
+          selectedColor: Theme.of(context).primaryColor,
           labelStyle: TextStyle(
             color: !isEmailSelected ? Colors.white : Colors.black,
           ),
@@ -205,30 +188,33 @@ class _CreateUserScreenState extends State<CreateUserScreen>
     return Column(
       children: [
         _buildTextField(_usernameController, 'Username', Icons.person),
-        SizedBox(height: 15),
+        const SizedBox(height: 15),
         if (isEmailSelected)
           _buildTextField(_emailController, 'Email', Icons.email,
               keyboardType: TextInputType.emailAddress),
         if (!isEmailSelected)
           _buildTextField(_phoneController, 'Phone', Icons.phone,
               keyboardType: TextInputType.phone),
-        SizedBox(height: 15),
+        const SizedBox(height: 15),
         _buildTextField(_passwordController, 'Password', Icons.lock,
             isPassword: true),
-        SizedBox(height: 15),
+        const SizedBox(height: 15),
         _buildTextField(_companyController, 'Add Company', Icons.business),
-        SizedBox(height: 10),
+        const SizedBox(height: 10),
         ElevatedButton(
           onPressed: _addCompany,
-          child: Text('Add Company', style: TextStyle(color: Colors.white)),
-          style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+          child:
+              const Text('Add Company', style: TextStyle(color: Colors.white)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Theme.of(context).primaryColor,
+          ),
         ),
-        SizedBox(height: 10),
+        const SizedBox(height: 10),
         Wrap(
           children: companies
               .map((company) => Chip(
                     label: Text(company),
-                    deleteIcon: Icon(Icons.close),
+                    deleteIcon: const Icon(Icons.close),
                     onDeleted: () {
                       setState(() {
                         companies.remove(company);
@@ -237,15 +223,18 @@ class _CreateUserScreenState extends State<CreateUserScreen>
                   ))
               .toList(),
         ),
-        SizedBox(height: 20),
+        const SizedBox(height: 20),
         _buildRoleDropdown(),
-        SizedBox(height: 20),
+        const SizedBox(height: 20),
         ElevatedButton(
           onPressed: isEmailSelected ? _registerWithEmail : _registerWithPhone,
           child: Text(
-              isEmailSelected ? 'Register with Email' : 'Register with Phone',
-              style: TextStyle(color: Colors.white)),
-          style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+            isEmailSelected ? 'Register with Email' : 'Register with Phone',
+            style: const TextStyle(color: Colors.white),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Theme.of(context).primaryColor,
+          ),
         ),
       ],
     );
@@ -258,14 +247,15 @@ class _CreateUserScreenState extends State<CreateUserScreen>
       controller: controller,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: primaryColor),
+        prefixIcon: Icon(icon, color: Theme.of(context).primaryColor),
         filled: true,
         fillColor: Colors.grey[100],
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.0),
           borderSide: BorderSide(color: Colors.grey.shade300),
         ),
-        contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+        contentPadding:
+            const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
       ),
       obscureText: isPassword,
       keyboardType: keyboardType,
@@ -277,7 +267,7 @@ class _CreateUserScreenState extends State<CreateUserScreen>
       value: _selectedRole,
       decoration: InputDecoration(
         labelText: 'Select Role',
-        prefixIcon: Icon(Icons.security, color: primaryColor),
+        prefixIcon: Icon(Icons.security, color: Theme.of(context).primaryColor),
         filled: true,
         fillColor: Colors.grey[100],
         border: OutlineInputBorder(
