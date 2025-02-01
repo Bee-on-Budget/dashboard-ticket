@@ -30,7 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (role == 'admin') {
           Navigator.pushReplacementNamed(
-              context, '/home'); // Admins go to CreateUser
+              context, '/merged'); // Admins go to CreateUser
         } else {
           Navigator.pushReplacementNamed(
               context, '/home'); // Regular users go to Home

@@ -85,7 +85,10 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
 
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Theme.of(context).primaryColor,
+      ),
     );
   }
 
@@ -94,7 +97,9 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => const Center(
-        child: CircularProgressIndicator(),
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF44564A)),
+        ),
       ),
     );
   }
@@ -106,15 +111,15 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create Account'),
-        backgroundColor: Theme.of(context).primaryColor,
+        backgroundColor: const Color(0xFF44564A),
+        elevation: 0,
       ),
       body: SingleChildScrollView(
         child: Center(
           child: Container(
-            width: screenWidth > 800
-                ? 600
-                : screenWidth - 40, // Adjust width for responsiveness
+            width: screenWidth > 800 ? 600 : screenWidth - 40,
             padding: const EdgeInsets.all(20.0),
+            margin: const EdgeInsets.all(20.0),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
@@ -132,10 +137,10 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
               children: [
                 Text(
                   'Create a New Account',
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF44564A),
+                      ),
                 ),
                 const SizedBox(height: 20),
                 _buildChoiceChips(),
@@ -161,7 +166,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
               isEmailSelected = true;
             });
           },
-          selectedColor: Theme.of(context).primaryColor,
+          selectedColor: const Color(0xFF44564A),
           labelStyle: TextStyle(
             color: isEmailSelected ? Colors.white : Colors.black,
           ),
@@ -175,7 +180,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
               isEmailSelected = false;
             });
           },
-          selectedColor: Theme.of(context).primaryColor,
+          selectedColor: const Color(0xFF44564A),
           labelStyle: TextStyle(
             color: !isEmailSelected ? Colors.white : Colors.black,
           ),
@@ -206,20 +211,26 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
           child:
               const Text('Add Company', style: TextStyle(color: Colors.white)),
           style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).primaryColor,
+            backgroundColor: const Color(0xFF44564A),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
         ),
         const SizedBox(height: 10),
         Wrap(
+          spacing: 8,
           children: companies
               .map((company) => Chip(
                     label: Text(company),
-                    deleteIcon: const Icon(Icons.close),
+                    deleteIcon: const Icon(Icons.close, size: 16),
                     onDeleted: () {
                       setState(() {
                         companies.remove(company);
                       });
                     },
+                    backgroundColor: Colors.grey[200],
                   ))
               .toList(),
         ),
@@ -233,7 +244,11 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
             style: const TextStyle(color: Colors.white),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).primaryColor,
+            backgroundColor: const Color(0xFF44564A),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
         ),
       ],
@@ -247,7 +262,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
       controller: controller,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: Theme.of(context).primaryColor),
+        prefixIcon: Icon(icon, color: const Color(0xFF44564A)),
         filled: true,
         fillColor: Colors.grey[100],
         border: OutlineInputBorder(
@@ -267,7 +282,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
       value: _selectedRole,
       decoration: InputDecoration(
         labelText: 'Select Role',
-        prefixIcon: Icon(Icons.security, color: Theme.of(context).primaryColor),
+        prefixIcon: Icon(Icons.security, color: const Color(0xFF44564A)),
         filled: true,
         fillColor: Colors.grey[100],
         border: OutlineInputBorder(

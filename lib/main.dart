@@ -30,6 +30,7 @@ class MyApp extends StatelessWidget {
         '/login': (context) => LoginScreen(),
         '/createUser': (context) => CreateUserScreen(),
         '/tickets': (context) => TicketsScreen(),
+        '/merged': (context) => MergedScreen(),
       },
     );
   }

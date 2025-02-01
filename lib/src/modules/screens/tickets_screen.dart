@@ -47,11 +47,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
         });
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to fetch admins: $e')),
-        );
-      }
+      _showSnackBar('Failed to fetch admins: $e');
     }
   }
 
@@ -68,12 +64,13 @@ class _TicketsScreenState extends State<TicketsScreen> {
         });
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to fetch users: $e')),
-        );
-      }
+      _showSnackBar('Failed to fetch users: $e');
     }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -81,10 +78,11 @@ class _TicketsScreenState extends State<TicketsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(selectedTicketId == null ? 'Tickets' : 'Ticket Details'),
-        backgroundColor: Theme.of(context).primaryColor,
+        backgroundColor: Colors.teal,
+        elevation: 0,
         leading: selectedTicketId != null
             ? IconButton(
-                icon: const Icon(Icons.arrow_back),
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
                 onPressed: () {
                   setState(() {
                     selectedTicketId = null;
@@ -96,7 +94,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
       ),
       body: Column(
         children: [
-          _buildSearchBar(),
+          _buildSearchAndFilterBar(),
           _buildDateRangePicker(),
           Expanded(
             child: selectedTicketId == null
@@ -108,56 +106,76 @@ class _TicketsScreenState extends State<TicketsScreen> {
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchAndFilterBar() {
     return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Row(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
         children: [
-          Expanded(
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search tickets...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                ),
-                prefixIcon: const Icon(Icons.search),
+          TextField(
+            decoration: InputDecoration(
+              hintText: 'Search tickets...',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20.0),
+                borderSide: BorderSide.none,
               ),
-              onChanged: (value) {
-                setState(() {
-                  searchQuery = value;
-                });
-              },
+              filled: true,
+              fillColor: Colors.grey[200],
+              prefixIcon: const Icon(Icons.search, color: Colors.teal),
+              contentPadding: const EdgeInsets.symmetric(vertical: 0),
             ),
-          ),
-          const SizedBox(width: 10),
-          ToggleButtons(
-            isSelected: [
-              selectedFilter == 'title',
-              selectedFilter == 'description',
-              selectedFilter == 'status',
-            ],
-            onPressed: (index) {
+            onChanged: (value) {
               setState(() {
-                selectedFilter = ['title', 'description', 'status'][index];
+                searchQuery = value;
               });
             },
-            borderRadius: BorderRadius.circular(10),
-            color: Theme.of(context).primaryColor,
-            selectedColor: Colors.white,
-            fillColor: Theme.of(context).primaryColor,
-            children: const [
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8.0),
-                child: Text('Title'),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Wrap(
+                  spacing: 8.0,
+                  children: [
+                    FilterChip(
+                      label: const Text('Title'),
+                      selected: selectedFilter == 'title',
+                      onSelected: (selected) {
+                        setState(() {
+                          selectedFilter = 'title';
+                        });
+                      },
+                    ),
+                    FilterChip(
+                      label: const Text('Description'),
+                      selected: selectedFilter == 'description',
+                      onSelected: (selected) {
+                        setState(() {
+                          selectedFilter = 'description';
+                        });
+                      },
+                    ),
+                    FilterChip(
+                      label: const Text('Status'),
+                      selected: selectedFilter == 'status',
+                      onSelected: (selected) {
+                        setState(() {
+                          selectedFilter = 'status';
+                        });
+                      },
+                    ),
+                  ],
+                ),
               ),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8.0),
-                child: Text('Description'),
-              ),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8.0),
-                child: Text('Status'),
-              ),
+              if (startDate != null && endDate != null)
+                IconButton(
+                  icon: const Icon(Icons.clear, color: Colors.teal),
+                  onPressed: () {
+                    setState(() {
+                      startDate = null;
+                      endDate = null;
+                    });
+                  },
+                ),
             ],
           ),
         ],
@@ -167,49 +185,56 @@ class _TicketsScreenState extends State<TicketsScreen> {
 
   Widget _buildDateRangePicker() {
     return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Row(
-        children: [
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () async {
-                DateTimeRange? picked = await showDateRangePicker(
-                  context: context,
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime.now(),
-                  builder: (context, child) {
-                    return Theme(
-                      data: ThemeData.light().copyWith(
-                        primaryColor: Theme.of(context).primaryColor,
-                        colorScheme: ColorScheme.light(
-                            primary: Theme.of(context).primaryColor),
-                      ),
-                      child: child!,
-                    );
-                  },
-                );
-                if (picked != null) {
-                  setState(() {
-                    startDate = picked.start;
-                    endDate = picked.end;
-                  });
-                }
-              },
-              icon: const Icon(Icons.calendar_today),
-              label: Text(
-                startDate != null && endDate != null
-                    ? '${DateFormat('dd/MM/yyyy').format(startDate!)} - ${DateFormat('dd/MM/yyyy').format(endDate!)}'
-                    : 'Select Date Range',
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: ElevatedButton(
+        onPressed: () async {
+          DateTimeRange? picked = await showDateRangePicker(
+            context: context,
+            firstDate: DateTime(2000),
+            lastDate: DateTime.now(),
+            initialDateRange: startDate != null && endDate != null
+                ? DateTimeRange(start: startDate!, end: endDate!)
+                : null,
+            helpText: "Select a date range",
+            builder: (context, child) {
+              return Theme(
+                data: ThemeData.light().copyWith(
+                  primaryColor: Colors.teal,
+                  colorScheme: const ColorScheme.light(primary: Colors.teal),
+                  buttonTheme:
+                      const ButtonThemeData(textTheme: ButtonTextTheme.primary),
                 ),
-              ),
-            ),
+                child: child!,
+              );
+            },
+          );
+          if (picked != null) {
+            setState(() {
+              startDate = picked.start;
+              endDate = picked.end;
+            });
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.teal,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-        ],
+          padding: const EdgeInsets.symmetric(vertical: 12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.calendar_today, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              startDate != null && endDate != null
+                  ? '${DateFormat('MMM dd, yyyy').format(startDate!)} - ${DateFormat('MMM dd, yyyy').format(endDate!)}'
+                  : 'Select Date Range',
+              style: const TextStyle(color: Colors.white),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -224,67 +249,79 @@ class _TicketsScreenState extends State<TicketsScreen> {
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const Center(child: Text('No tickets available'));
         }
-        return ListView(
-          children: snapshot.data!.docs.map((doc) {
+        return ListView.separated(
+          padding: const EdgeInsets.all(16.0),
+          itemCount: snapshot.data!.docs.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 8),
+          itemBuilder: (context, index) {
+            final doc = snapshot.data!.docs[index];
             final data = doc.data() as Map<String, dynamic>;
             String assignedAdminId = data['assignedAdminId'] ?? '';
             String publisherName = users[data['publisherId']] ?? 'Unknown';
 
             return Card(
-              elevation: 4,
-              margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              elevation: 2,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(15),
               ),
-              child: ListTile(
-                contentPadding:
-                    const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                title: Text(
-                  data['title'] ?? 'No Title',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      data['description'] ?? 'No Description',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      'Published by: $publisherName',
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                    DropdownButton<String>(
-                      value:
-                          assignedAdminId.isNotEmpty ? assignedAdminId : null,
-                      hint: const Text('Assign Admin'),
-                      onChanged: (String? newValue) {
-                        _assignAdminToTicket(doc.id, newValue!);
-                      },
-                      items: admins.map<DropdownMenuItem<String>>(
-                          (Map<String, dynamic> admin) {
-                        return DropdownMenuItem<String>(
-                          value: admin['id'],
-                          child: Text(admin['name']),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-                trailing: Text(
-                  data['status'] ?? 'No Status',
-                  style: const TextStyle(color: Colors.grey),
-                ),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(15),
                 onTap: () {
                   setState(() {
                     selectedTicketId = doc.id;
                     selectedTicketData = data;
                   });
                 },
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        spacing: 8,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            data['title'] ?? 'No Title',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'Published by: $publisherName',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                          Text(
+                            'Status: ${data['status'] ?? 'No Status'}',
+                            style: TextStyle(
+                              color: _getStatusColor(data['status']),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      DropdownButton<String>(
+                        value:
+                            assignedAdminId.isNotEmpty ? assignedAdminId : null,
+                        hint: const Text('Assign Admin'),
+                        onChanged: (String? newValue) {
+                          _assignAdminToTicket(doc.id, newValue!);
+                        },
+                        items: admins.map<DropdownMenuItem<String>>(
+                            (Map<String, dynamic> admin) {
+                          return DropdownMenuItem<String>(
+                            value: admin['id'],
+                            child: Text(admin['name']),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             );
-          }).toList(),
+          },
         );
       },
     );
@@ -299,62 +336,70 @@ class _TicketsScreenState extends State<TicketsScreen> {
         users[selectedTicketData!['publisherId']] ?? 'Unknown';
 
     return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Title: ${selectedTicketData!['title']}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            selectedTicketData!['title'] ?? 'No Title',
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
             ),
-            const SizedBox(height: 10),
-            Text(
-              'Description: ${selectedTicketData!['description']}',
-              style: const TextStyle(fontSize: 16),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            selectedTicketData!['description'] ?? 'No Description',
+            style: const TextStyle(fontSize: 16),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Published by: $publisherName',
+            style: const TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            value: status,
+            decoration: InputDecoration(
+              labelText: 'Status',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
             ),
-            const SizedBox(height: 10),
-            Text(
-              'Status:',
-              style: const TextStyle(fontSize: 16),
-            ),
-            DropdownButton<String>(
-              value: status,
-              onChanged: (String? newValue) {
-                _updateTicketStatus(selectedTicketId!, newValue!);
-              },
-              items:
-                  statusOptions.map<DropdownMenuItem<String>>((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Published by: $publisherName',
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Files:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            ...files.map((fileUrl) {
-              return ListTile(
+            onChanged: (String? newValue) {
+              _updateTicketStatus(selectedTicketId!, newValue!);
+            },
+            items: statusOptions.map<DropdownMenuItem<String>>((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Attachments:',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          ...files.map((fileUrl) {
+            return Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: ListTile(
                 title: Text(fileUrl),
                 trailing: IconButton(
-                  icon: const Icon(Icons.download),
+                  icon: const Icon(Icons.download, color: Colors.teal),
                   onPressed: () {
                     _downloadFile(fileUrl);
                   },
                 ),
-              );
-            }).toList(),
-          ],
-        ),
+              ),
+            );
+          }).toList(),
+        ],
       ),
     );
   }
@@ -382,13 +427,9 @@ class _TicketsScreenState extends State<TicketsScreen> {
         .collection('tickets')
         .doc(ticketId)
         .update({'assignedAdminId': adminId}).then((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Admin assigned successfully')),
-      );
+      _showSnackBar('Admin assigned successfully');
     }).catchError((error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to assign admin: $error')),
-      );
+      _showSnackBar('Failed to assign admin: $error');
     });
   }
 
@@ -402,13 +443,9 @@ class _TicketsScreenState extends State<TicketsScreen> {
           selectedTicketData!['status'] = newStatus;
         }
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Status updated successfully')),
-      );
+      _showSnackBar('Status updated successfully');
     }).catchError((error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update status: $error')),
-      );
+      _showSnackBar('Failed to update status: $error');
     });
   }
 
@@ -416,7 +453,20 @@ class _TicketsScreenState extends State<TicketsScreen> {
     if (await canLaunch(url)) {
       await launch(url);
     } else {
-      throw 'Could not launch $url';
+      _showSnackBar('Could not launch $url');
+    }
+  }
+
+  Color _getStatusColor(String? status) {
+    switch (status) {
+      case 'Open':
+        return Colors.blue;
+      case 'In Progress':
+        return Colors.orange;
+      case 'Closed':
+        return Colors.green;
+      default:
+        return Colors.grey;
     }
   }
 }
