@@ -27,7 +27,6 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     'PayPal',
     'Bank Transfer',
   ];
-
   Future<void> _registerUser() async {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
@@ -50,7 +49,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
             password,
             username,
             _companies,
-            _selectedPaymentMethods.join(', '),
+            _selectedPaymentMethods, // Pass as list, not string
             _selectedRole,
           )
         : await AuthService().createUserWithPhoneAndPassword(
@@ -58,7 +57,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
             password,
             username,
             _companies,
-            _selectedPaymentMethods.join(', '),
+            _selectedPaymentMethods, // Pass as list, not string
             _selectedRole,
           );
 

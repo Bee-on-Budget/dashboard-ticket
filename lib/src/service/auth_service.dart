@@ -19,12 +19,14 @@ class AuthService {
     String password,
     String username,
     List<String> companies,
-    String paymentMethod, // Single payment method
+    List<String> paymentMethods, // Multiple payment methods
     String role,
   ) async {
-    // Validate payment method
-    if (!validPaymentMethods.contains(paymentMethod)) {
-      print('Invalid payment method: $paymentMethod');
+    // Validate payment methods
+    if (!paymentMethods
+        .every((method) => validPaymentMethods.contains(method))) {
+      print(
+          'Invalid payment methods: ${paymentMethods.where((method) => !validPaymentMethods.contains(method)).join(', ')}');
       return null;
     }
 
@@ -34,12 +36,12 @@ class AuthService {
         password: password,
       );
 
-      // Store user info in Firestore with role and paymentMethod
+      // Store user info in Firestore with role and paymentMethods
       await _firestore.collection('users').doc(userCredential.user!.uid).set({
         'username': username,
         'email': email,
         'companies': companies,
-        'paymentMethod': paymentMethod, // Save single payment method
+        'paymentMethods': paymentMethods, // Save list of payment methods
         'role': role,
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -57,12 +59,14 @@ class AuthService {
     String password,
     String username,
     List<String> companies,
-    String paymentMethod, // Single payment method
+    List<String> paymentMethods, // Multiple payment methods
     String role,
   ) async {
-    // Validate payment method
-    if (!validPaymentMethods.contains(paymentMethod)) {
-      print('Invalid payment method: $paymentMethod');
+    // Validate payment methods
+    if (!paymentMethods
+        .every((method) => validPaymentMethods.contains(method))) {
+      print(
+          'Invalid payment methods: ${paymentMethods.where((method) => !validPaymentMethods.contains(method)).join(', ')}');
       return null;
     }
 
@@ -75,7 +79,7 @@ class AuthService {
 
       if (user != null) {
         await _saveUserToFirestore(
-            user.uid, phone, username, companies, paymentMethod, role);
+            user.uid, phone, username, companies, paymentMethods, role);
         print("User created and saved to Firestore.");
       }
 
@@ -92,7 +96,7 @@ class AuthService {
     String identifier,
     String username,
     List<String> companies,
-    String paymentMethod, // Single payment method
+    List<String> paymentMethods, // Multiple payment methods
     String role,
   ) async {
     try {
@@ -104,7 +108,7 @@ class AuthService {
           'identifier': identifier,
           'username': username,
           'companies': companies,
-          'paymentMethod': paymentMethod, // Save single payment method
+          'paymentMethods': paymentMethods, // Save list of payment methods
           'role': role,
           'createdAt': FieldValue.serverTimestamp(),
         });
