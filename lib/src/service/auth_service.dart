@@ -4,27 +4,43 @@ import 'package:firebase_auth/firebase_auth.dart';
 class AuthService {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
+  static const List<String> validPaymentMethods = [
+    'Card',
+    'Account',
+    'Cash',
+    'PayPal',
+    'Google Pay',
+    'Apple Pay',
+    'Bank Transfer',
+  ];
   // Create a user with email and password
   Future<User?> createUserWithEmailAndPassword(
     String email,
     String password,
     String username,
     List<String> companies,
-    String role, // Added role parameter
+    String paymentMethod, // Single payment method
+    String role,
   ) async {
+    // Validate payment method
+    if (!validPaymentMethods.contains(paymentMethod)) {
+      print('Invalid payment method: $paymentMethod');
+      return null;
+    }
+
     try {
       final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Store user info in Firestore with role
+      // Store user info in Firestore with role and paymentMethod
       await _firestore.collection('users').doc(userCredential.user!.uid).set({
         'username': username,
         'email': email,
         'companies': companies,
-        'role': role, // Save the role in Firestore
+        'paymentMethod': paymentMethod, // Save single payment method
+        'role': role,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -41,19 +57,25 @@ class AuthService {
     String password,
     String username,
     List<String> companies,
-    String role, // Added role parameter
+    String paymentMethod, // Single payment method
+    String role,
   ) async {
+    // Validate payment method
+    if (!validPaymentMethods.contains(paymentMethod)) {
+      print('Invalid payment method: $paymentMethod');
+      return null;
+    }
+
     try {
-      // Register the user with the phone number (using an email-like identifier)
       final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
-        email: '$phone@phone.com', // Treat phone as email-like identifier
+        email: '$phone@phone.com',
         password: password,
       );
       final user = userCredential.user;
 
-      // Save user to Firestore with role
       if (user != null) {
-        await _saveUserToFirestore(user.uid, phone, username, companies, role);
+        await _saveUserToFirestore(
+            user.uid, phone, username, companies, paymentMethod, role);
         print("User created and saved to Firestore.");
       }
 
@@ -70,10 +92,10 @@ class AuthService {
     String identifier,
     String username,
     List<String> companies,
+    String paymentMethod, // Single payment method
     String role,
   ) async {
     try {
-      // Check if the user already exists in Firestore
       DocumentSnapshot userDoc =
           await _firestore.collection('users').doc(uid).get();
       if (!userDoc.exists) {
@@ -82,7 +104,8 @@ class AuthService {
           'identifier': identifier,
           'username': username,
           'companies': companies,
-          'role': role, // Save the role
+          'paymentMethod': paymentMethod, // Save single payment method
+          'role': role,
           'createdAt': FieldValue.serverTimestamp(),
         });
         print("User successfully saved to Firestore!");
@@ -95,7 +118,6 @@ class AuthService {
   }
 
   // Sign in with email and password and check user role
-// Sign in with email and password and check user role
   Future<User?> signInWithEmailAndPassword(
       String email, String password) async {
     try {
@@ -114,8 +136,6 @@ class AuthService {
             return user; // Allow admin users to proceed
           } else {
             print('Access denied: User is not an admin.');
-            // Optionally, you could throw an exception or return a specific error message
-            // throw Exception('Access denied: User is not an admin.');
             return null; // Return null or handle it as needed for non-admin users
           }
         }
@@ -168,8 +188,6 @@ class AuthService {
             return user; // Allow admin users to proceed
           } else {
             print('Access denied: User is not an admin.');
-            // Optionally, you could throw an exception or return a specific error message
-            // throw Exception('Access denied: User is not an admin.');
             return null; // Return null or handle it as needed for non-admin users
           }
         }
