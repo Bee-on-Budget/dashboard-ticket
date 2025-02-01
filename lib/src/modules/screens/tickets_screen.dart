@@ -78,7 +78,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(selectedTicketId == null ? 'Tickets' : 'Ticket Details'),
-        backgroundColor: Colors.teal,
         elevation: 0,
         leading: selectedTicketId != null
             ? IconButton(
@@ -120,7 +119,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
               ),
               filled: true,
               fillColor: Colors.grey[200],
-              prefixIcon: const Icon(Icons.search, color: Colors.teal),
+              prefixIcon: const Icon(Icons.search, color: Color(0XFF44564A)),
               contentPadding: const EdgeInsets.symmetric(vertical: 0),
             ),
             onChanged: (value) {
@@ -168,7 +167,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
               ),
               if (startDate != null && endDate != null)
                 IconButton(
-                  icon: const Icon(Icons.clear, color: Colors.teal),
+                  icon: const Icon(Icons.clear, color: Color(0XFF44564A)),
                   onPressed: () {
                     setState(() {
                       startDate = null;
@@ -199,8 +198,9 @@ class _TicketsScreenState extends State<TicketsScreen> {
             builder: (context, child) {
               return Theme(
                 data: ThemeData.light().copyWith(
-                  primaryColor: Colors.teal,
-                  colorScheme: const ColorScheme.light(primary: Colors.teal),
+                  primaryColor: Color(0XFF44564A),
+                  colorScheme:
+                      const ColorScheme.light(primary: Color(0XFF44564A)),
                   buttonTheme:
                       const ButtonThemeData(textTheme: ButtonTextTheme.primary),
                 ),
@@ -216,7 +216,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
           }
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.teal,
+          backgroundColor: Color(0XFF44564A),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
@@ -391,7 +391,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
               child: ListTile(
                 title: Text(fileUrl),
                 trailing: IconButton(
-                  icon: const Icon(Icons.download, color: Colors.teal),
+                  icon: const Icon(Icons.download, color: Color(0XFF44564A)),
                   onPressed: () {
                     _downloadFile(fileUrl);
                   },
