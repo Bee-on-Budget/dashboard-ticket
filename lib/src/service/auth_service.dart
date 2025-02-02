@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 class AuthService {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   static const List<String> validPaymentMethods = [
     'Card',
     'Account',
@@ -13,6 +14,7 @@ class AuthService {
     'Apple Pay',
     'Bank Transfer',
   ];
+
   // Create a user with email and password
   Future<User?> createUserWithEmailAndPassword(
     String email,
@@ -31,20 +33,21 @@ class AuthService {
     }
 
     try {
+      // Create user in Firebase Authentication
       final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Store user info in Firestore with role and paymentMethods
-      await _firestore.collection('users').doc(userCredential.user!.uid).set({
-        'username': username,
-        'email': email,
-        'companies': companies,
-        'paymentMethods': paymentMethods, // Save list of payment methods
-        'role': role,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      // Store user info in Firestore
+      await _saveUserToFirestore(
+        userCredential.user!.uid,
+        email, // Use email as the identifier
+        username,
+        companies,
+        paymentMethods,
+        role,
+      );
 
       return userCredential.user;
     } catch (e) {
@@ -71,19 +74,26 @@ class AuthService {
     }
 
     try {
+      // Create a fake email for Firebase Authentication
+      final fakeEmail = '$phone@phone.com';
+
+      // Create user in Firebase Authentication
       final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
-        email: '$phone@phone.com',
+        email: fakeEmail,
         password: password,
       );
-      final user = userCredential.user;
 
-      if (user != null) {
-        await _saveUserToFirestore(
-            user.uid, phone, username, companies, paymentMethods, role);
-        print("User created and saved to Firestore.");
-      }
+      // Store user info in Firestore
+      await _saveUserToFirestore(
+        userCredential.user!.uid,
+        phone, // Use phone as the identifier
+        username,
+        companies,
+        paymentMethods,
+        role,
+      );
 
-      return user;
+      return userCredential.user;
     } catch (e) {
       print('Error during user creation with phone: $e');
       return null;
@@ -93,19 +103,22 @@ class AuthService {
   // Save user data to Firestore (for both email and phone)
   Future<void> _saveUserToFirestore(
     String uid,
-    String identifier,
+    String identifier, // Can be email or phone
     String username,
     List<String> companies,
     List<String> paymentMethods, // Multiple payment methods
     String role,
   ) async {
     try {
+      // Check if the user already exists in Firestore
       DocumentSnapshot userDoc =
           await _firestore.collection('users').doc(uid).get();
+
       if (!userDoc.exists) {
+        // Save user data to Firestore
         await _firestore.collection('users').doc(uid).set({
           'uid': uid,
-          'identifier': identifier,
+          'identifier': identifier, // Store email or phone
           'username': username,
           'companies': companies,
           'paymentMethods': paymentMethods, // Save list of payment methods
@@ -151,34 +164,15 @@ class AuthService {
     }
   }
 
-  // Get user role
-  Future<String?> getRole(String uid) async {
-    try {
-      DocumentSnapshot userDoc =
-          await _firestore.collection('users').doc(uid).get();
-      return userDoc['role'] as String?;
-    } catch (e) {
-      print('Error fetching user role: $e');
-      return null;
-    }
-  }
-
-  // Send password reset email
-  Future<void> sendPasswordResetEmail(String email) async {
-    try {
-      await _firebaseAuth.sendPasswordResetEmail(email: email);
-    } catch (e) {
-      print('Error sending password reset email: $e');
-    }
-  }
-
   // Sign in with phone number and password and check user role
   Future<User?> signInWithPhoneAndPassword(
       String phone, String password) async {
     try {
       // Use the phone number as an email-like identifier
+      final fakeEmail = '$phone@phone.com';
+
       final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
-        email: '$phone@phone.com', // Treat phone as email-like identifier
+        email: fakeEmail,
         password: password,
       );
 
@@ -200,6 +194,27 @@ class AuthService {
     } catch (e) {
       print('Error during phone sign-in: $e');
       return null;
+    }
+  }
+
+  // Get user role
+  Future<String?> getRole(String uid) async {
+    try {
+      DocumentSnapshot userDoc =
+          await _firestore.collection('users').doc(uid).get();
+      return userDoc['role'] as String?;
+    } catch (e) {
+      print('Error fetching user role: $e');
+      return null;
+    }
+  }
+
+  // Send password reset email
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _firebaseAuth.sendPasswordResetEmail(email: email);
+    } catch (e) {
+      print('Error sending password reset email: $e');
     }
   }
 }
