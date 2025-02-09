@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:async';
+
+const Color primaryColor = Color(0xFF44564A);
+final TextStyle boldTextStyle = TextStyle(fontWeight: FontWeight.bold);
 
 class TicketsScreen extends StatefulWidget {
   const TicketsScreen({Key? key}) : super(key: key);
@@ -11,15 +15,19 @@ class TicketsScreen extends StatefulWidget {
 }
 
 class _TicketsScreenState extends State<TicketsScreen> {
+  final TextEditingController searchController = TextEditingController();
   String? selectedTicketId;
   Map<String, dynamic>? selectedTicketData;
+  String? selectedFilterValue;
+
   List<Map<String, dynamic>> admins = [];
   Map<String, dynamic> users = {};
+  Map<String, List<String>> userCompanies = {};
   String searchQuery = '';
   String selectedFilter = 'title';
-  DateTime? startDate;
-  DateTime? endDate;
+  DateTimeRange? selectedDateRange;
   List<String> statusOptions = ['Open', 'In Progress', 'Closed'];
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -59,7 +67,12 @@ class _TicketsScreenState extends State<TicketsScreen> {
       if (mounted) {
         setState(() {
           users = {
-            for (var doc in userSnapshot.docs) doc.id: doc.data()['fullName']
+            for (var doc in userSnapshot.docs)
+              doc.id: _handleNullString(doc.data()?['username'])
+          };
+          userCompanies = {
+            for (var doc in userSnapshot.docs)
+              doc.id: List<String>.from(doc.data()?['companies'] ?? [])
           };
         });
       }
@@ -68,9 +81,20 @@ class _TicketsScreenState extends State<TicketsScreen> {
     }
   }
 
+  String _handleNullString(String? nullableString) {
+    return nullableString ?? 'Unknown';
+  }
+
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -90,11 +114,17 @@ class _TicketsScreenState extends State<TicketsScreen> {
                 },
               )
             : null,
+        actions: [
+          if (selectedTicketId == null)
+            IconButton(
+              icon: const Icon(Icons.clear_all, color: Colors.white),
+              onPressed: _clearAllFilters,
+            ),
+        ],
       ),
       body: Column(
         children: [
           _buildSearchAndFilterBar(),
-          _buildDateRangePicker(),
           Expanded(
             child: selectedTicketId == null
                 ? _buildTicketList()
@@ -105,12 +135,23 @@ class _TicketsScreenState extends State<TicketsScreen> {
     );
   }
 
+  void _clearAllFilters() {
+    setState(() {
+      searchQuery = '';
+      searchController.clear();
+      selectedFilter = 'title';
+      selectedFilterValue = null;
+      selectedDateRange = null;
+    });
+  }
+
   Widget _buildSearchAndFilterBar() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
           TextField(
+            controller: searchController,
             decoration: InputDecoration(
               hintText: 'Search tickets...',
               border: OutlineInputBorder(
@@ -119,145 +160,203 @@ class _TicketsScreenState extends State<TicketsScreen> {
               ),
               filled: true,
               fillColor: Colors.grey[200],
-              prefixIcon: const Icon(Icons.search, color: Color(0XFF44564A)),
+              prefixIcon: const Icon(Icons.search, color: primaryColor),
               contentPadding: const EdgeInsets.symmetric(vertical: 0),
             ),
-            onChanged: (value) {
-              setState(() {
-                searchQuery = value;
-              });
-            },
+            onChanged: _onSearchChanged,
           ),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: Wrap(
-                  spacing: 8.0,
-                  children: [
-                    FilterChip(
-                      label: const Text('Title'),
-                      selected: selectedFilter == 'title',
-                      onSelected: (selected) {
-                        setState(() {
-                          selectedFilter = 'title';
-                        });
-                      },
-                    ),
-                    FilterChip(
-                      label: const Text('Description'),
-                      selected: selectedFilter == 'description',
-                      onSelected: (selected) {
-                        setState(() {
-                          selectedFilter = 'description';
-                        });
-                      },
-                    ),
-                    FilterChip(
-                      label: const Text('Status'),
-                      selected: selectedFilter == 'status',
-                      onSelected: (selected) {
-                        setState(() {
-                          selectedFilter = 'status';
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              if (startDate != null && endDate != null)
-                IconButton(
-                  icon: const Icon(Icons.clear, color: Color(0XFF44564A)),
-                  onPressed: () {
-                    setState(() {
-                      startDate = null;
-                      endDate = null;
-                    });
-                  },
-                ),
-            ],
-          ),
+          _buildStatusDropdown(),
+          _buildDateSelection(),
         ],
       ),
     );
   }
 
-  Widget _buildDateRangePicker() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: ElevatedButton(
-        onPressed: () async {
-          DateTimeRange? picked = await showDateRangePicker(
-            context: context,
-            firstDate: DateTime(2000),
-            lastDate: DateTime.now(),
-            initialDateRange: startDate != null && endDate != null
-                ? DateTimeRange(start: startDate!, end: endDate!)
-                : null,
-            helpText: "Select a date range",
-            builder: (context, child) {
-              return Theme(
-                data: ThemeData.light().copyWith(
-                  primaryColor: Color(0XFF44564A),
-                  colorScheme:
-                      const ColorScheme.light(primary: Color(0XFF44564A)),
-                  buttonTheme:
-                      const ButtonThemeData(textTheme: ButtonTextTheme.primary),
-                ),
-                child: child!,
-              );
-            },
-          );
-          if (picked != null) {
-            setState(() {
-              startDate = picked.start;
-              endDate = picked.end;
-            });
-          }
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Color(0XFF44564A),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 12),
+  Widget _buildStatusDropdown() {
+    return DropdownButtonFormField<String>(
+      value: selectedFilter == 'status' ? selectedFilterValue : null,
+      decoration: InputDecoration(
+        labelText: 'Status',
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20.0),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.calendar_today, color: Colors.white),
-            const SizedBox(width: 8),
-            Text(
-              startDate != null && endDate != null
-                  ? '${DateFormat('MMM dd, yyyy').format(startDate!)} - ${DateFormat('MMM dd, yyyy').format(endDate!)}'
-                  : 'Select Date Range',
-              style: const TextStyle(color: Colors.white),
-            ),
-          ],
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10),
       ),
+      hint: const Text('Select Status'),
+      onChanged: (String? newValue) {
+        setState(() {
+          selectedFilter = 'status';
+          selectedFilterValue = newValue;
+        });
+      },
+      items: statusOptions.map<DropdownMenuItem<String>>((String value) {
+        return DropdownMenuItem<String>(
+          value: value,
+          child: Text(value),
+        );
+      }).toList(),
     );
   }
 
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      setState(() {
+        searchQuery = query;
+      });
+    });
+  }
+
+  Widget _buildFilterBar() {
+    return Row(
+      children: [
+        Expanded(
+          child: DropdownButtonFormField<String>(
+            value: selectedFilter == 'status' ? selectedFilterValue : null,
+            decoration: InputDecoration(
+              labelText: 'Status',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20.0),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+            ),
+            hint: const Text('Select Status'),
+            onChanged: (String? newValue) {
+              setState(() {
+                selectedFilter = 'status';
+                selectedFilterValue = newValue;
+              });
+            },
+            items: statusOptions.map<DropdownMenuItem<String>>((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateSelection() {
+    return Row(
+      children: [
+        IconButton(
+          icon: const Icon(Icons.calendar_today, color: primaryColor),
+          onPressed: () => _showDateRangePicker(context),
+        ),
+        if (selectedDateRange != null)
+          IconButton(
+            icon: const Icon(Icons.clear, color: primaryColor),
+            onPressed: () {
+              setState(() {
+                selectedDateRange = null;
+              });
+            },
+          ),
+        if (selectedDateRange != null)
+          Text(
+            '${DateFormat('MMM dd').format(selectedDateRange!.start)} - ${DateFormat('MMM dd').format(selectedDateRange!.end)}',
+            style: const TextStyle(color: primaryColor),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _showDateRangePicker(BuildContext context) async {
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+      helpText: "Select Date Range",
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            primaryColor: primaryColor,
+            colorScheme: ColorScheme.light(primary: primaryColor),
+            buttonTheme:
+                const ButtonThemeData(textTheme: ButtonTextTheme.primary),
+          ),
+          child: Dialog(
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.8, // Smaller width
+              child: child,
+            ),
+          ),
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        selectedDateRange = picked;
+      });
+    }
+  }
+
+  Stream<List<Map<String, dynamic>>> _getFilteredTicketsStream() async* {
+    final snapshot =
+        await FirebaseFirestore.instance.collection('tickets').get();
+    List<Map<String, dynamic>> tickets = snapshot.docs.map((doc) {
+      return {
+        ...doc.data() as Map<String, dynamic>,
+        'id': doc.id,
+      };
+    }).toList();
+
+    if (searchQuery.length >= 3) {
+      final searchLower = searchQuery.toLowerCase();
+
+      tickets = tickets.where((ticket) {
+        final title = ticket['title']?.toLowerCase() ?? '';
+        final description = ticket['description']?.toLowerCase() ?? '';
+        final publisherId = ticket['userId'] ?? '';
+        final publisherName = users[publisherId]?.toLowerCase() ?? '';
+        final companies =
+            userCompanies[publisherId]?.map((e) => e.toLowerCase()) ?? [];
+
+        return title.contains(searchLower) ||
+            description.contains(searchLower) ||
+            publisherName.contains(searchLower) ||
+            companies.any((company) => company.contains(searchLower));
+      }).toList();
+    }
+
+    if (selectedFilter == 'status' && selectedFilterValue != null) {
+      tickets = tickets.where((ticket) {
+        return ticket['status'] == selectedFilterValue;
+      }).toList();
+    }
+
+    if (selectedDateRange != null) {
+      tickets = tickets.where((ticket) {
+        final createdDate = (ticket['createdDate'] as Timestamp).toDate();
+        return createdDate.isAfter(selectedDateRange!.start) &&
+            createdDate.isBefore(selectedDateRange!.end);
+      }).toList();
+    }
+
+    yield tickets;
+  }
+
   Widget _buildTicketList() {
-    return StreamBuilder<QuerySnapshot>(
+    return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _getFilteredTicketsStream(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const Center(child: Text('No tickets available'));
         }
-        return ListView.separated(
-          padding: const EdgeInsets.all(16.0),
-          itemCount: snapshot.data!.docs.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 8),
+        return ListView.builder(
+          itemCount: snapshot.data!.length,
           itemBuilder: (context, index) {
-            final doc = snapshot.data!.docs[index];
-            final data = doc.data() as Map<String, dynamic>;
-            String assignedAdminId = data['assignedAdminId'] ?? '';
-            String publisherName = users[data['publisherId']] ?? 'Unknown';
+            final ticket = snapshot.data![index];
+            String assignedAdminId = ticket['assignedAdminId'] ?? '';
+            String publisherName = users[ticket['userId']] ?? 'Unknown';
 
             return Card(
               elevation: 2,
@@ -268,8 +367,8 @@ class _TicketsScreenState extends State<TicketsScreen> {
                 borderRadius: BorderRadius.circular(15),
                 onTap: () {
                   setState(() {
-                    selectedTicketId = doc.id;
-                    selectedTicketData = data;
+                    selectedTicketId = ticket['id'];
+                    selectedTicketData = ticket;
                   });
                 },
                 child: Padding(
@@ -278,24 +377,20 @@ class _TicketsScreenState extends State<TicketsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Column(
-                        spacing: 8,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            data['title'] ?? 'No Title',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            ticket['title'] ?? 'No Title',
+                            style: boldTextStyle.copyWith(fontSize: 18),
                           ),
                           Text(
                             'Published by: $publisherName',
                             style: TextStyle(color: Colors.grey[600]),
                           ),
                           Text(
-                            'Status: ${data['status'] ?? 'No Status'}',
+                            'Status: ${ticket['status'] ?? 'No Status'}',
                             style: TextStyle(
-                              color: _getStatusColor(data['status']),
+                              color: _getStatusColor(ticket['status']),
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -306,7 +401,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                             assignedAdminId.isNotEmpty ? assignedAdminId : null,
                         hint: const Text('Assign Admin'),
                         onChanged: (String? newValue) {
-                          _assignAdminToTicket(doc.id, newValue!);
+                          _assignAdminToTicket(ticket['id'], newValue!);
                         },
                         items: admins.map<DropdownMenuItem<String>>(
                             (Map<String, dynamic> admin) {
@@ -330,10 +425,9 @@ class _TicketsScreenState extends State<TicketsScreen> {
   Widget _buildTicketDetail() {
     if (selectedTicketData == null) return Container();
 
-    final files = selectedTicketData!['files'] as List<dynamic>? ?? [];
-    String status = selectedTicketData!['status'] ?? 'No Status';
-    String publisherName =
-        users[selectedTicketData!['publisherId']] ?? 'Unknown';
+    final files = selectedTicketData?['files'] as List<dynamic>? ?? [];
+    String status = selectedTicketData?['status'] ?? 'No Status';
+    String publisherName = users[selectedTicketData?['userId']] ?? 'Unknown';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -341,15 +435,12 @@ class _TicketsScreenState extends State<TicketsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            selectedTicketData!['title'] ?? 'No Title',
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
+            selectedTicketData?['title'] ?? 'No Title',
+            style: boldTextStyle.copyWith(fontSize: 24),
           ),
           const SizedBox(height: 16),
           Text(
-            selectedTicketData!['description'] ?? 'No Description',
+            selectedTicketData?['description'] ?? 'No Description',
             style: const TextStyle(fontSize: 16),
           ),
           const SizedBox(height: 16),
@@ -391,7 +482,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
               child: ListTile(
                 title: Text(fileUrl),
                 trailing: IconButton(
-                  icon: const Icon(Icons.download, color: Color(0XFF44564A)),
+                  icon: const Icon(Icons.download, color: primaryColor),
                   onPressed: () {
                     _downloadFile(fileUrl);
                   },
@@ -402,24 +493,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
         ],
       ),
     );
-  }
-
-  Stream<QuerySnapshot> _getFilteredTicketsStream() {
-    final collection = FirebaseFirestore.instance.collection('tickets');
-    Query query = collection;
-
-    if (searchQuery.length >= 3) {
-      query = query.where(selectedFilter,
-          isGreaterThanOrEqualTo: searchQuery,
-          isLessThanOrEqualTo: searchQuery + '\uf8ff');
-    }
-
-    if (startDate != null && endDate != null) {
-      query = query.where('createdDate',
-          isGreaterThanOrEqualTo: startDate, isLessThanOrEqualTo: endDate);
-    }
-
-    return query.snapshots();
   }
 
   void _assignAdminToTicket(String ticketId, String adminId) {
