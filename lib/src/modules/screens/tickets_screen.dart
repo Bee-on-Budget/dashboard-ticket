@@ -41,7 +41,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
             final data = doc.data() as Map<String, dynamic>;
             return {
               'id': doc.id,
-              'name': data['fullName'] ?? 'No Name',
+              'name': data['username'] ?? 'No Name',
             };
           }).toList();
         });

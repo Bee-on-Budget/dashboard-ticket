@@ -56,16 +56,14 @@ class AuthService {
     }
   }
 
-  // Create a user with phone number and password
   Future<User?> createUserWithPhoneAndPassword(
     String phone,
     String password,
     String username,
     List<String> companies,
-    List<String> paymentMethods, // Multiple payment methods
+    List<String> paymentMethods,
     String role,
   ) async {
-    // Validate payment methods
     if (!paymentMethods
         .every((method) => validPaymentMethods.contains(method))) {
       print(
@@ -74,19 +72,16 @@ class AuthService {
     }
 
     try {
-      // Create a fake email for Firebase Authentication
       final fakeEmail = '$phone@phone.com';
 
-      // Create user in Firebase Authentication
       final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: fakeEmail,
         password: password,
       );
 
-      // Store user info in Firestore
       await _saveUserToFirestore(
         userCredential.user!.uid,
-        phone, // Use phone as the identifier
+        phone,
         username,
         companies,
         paymentMethods,
@@ -100,28 +95,25 @@ class AuthService {
     }
   }
 
-  // Save user data to Firestore (for both email and phone)
   Future<void> _saveUserToFirestore(
     String uid,
-    String identifier, // Can be email or phone
+    String identifier,
     String username,
     List<String> companies,
-    List<String> paymentMethods, // Multiple payment methods
+    List<String> paymentMethods,
     String role,
   ) async {
     try {
-      // Check if the user already exists in Firestore
       DocumentSnapshot userDoc =
           await _firestore.collection('users').doc(uid).get();
 
       if (!userDoc.exists) {
-        // Save user data to Firestore
         await _firestore.collection('users').doc(uid).set({
           'uid': uid,
-          'identifier': identifier, // Store email or phone
+          'identifier': identifier,
           'username': username,
           'companies': companies,
-          'paymentMethods': paymentMethods, // Save list of payment methods
+          'paymentMethods': paymentMethods,
           'role': role,
           'createdAt': FieldValue.serverTimestamp(),
         });
