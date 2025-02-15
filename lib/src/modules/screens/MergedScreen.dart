@@ -34,6 +34,9 @@ class _MergedScreenState extends State<MergedScreen> {
         ),
         backgroundColor: Color(0xFF44564A),
         elevation: 0,
+        iconTheme: IconThemeData(
+          color: Colors.white, // Set the color of the icon here
+        ),
         actions: [
           IconButton(
             icon: Icon(Icons.notifications, color: Colors.white),
@@ -107,25 +110,22 @@ class _MergedScreenState extends State<MergedScreen> {
         duration: Duration(milliseconds: 300),
         child: _pages[_currentIndex],
       ),
-      floatingActionButton: _currentIndex == 2
-          ? FloatingActionButton(
-              onPressed: () {
-                // Handle FAB action for TicketsScreen
-              },
-              backgroundColor: Color(0xFF44564A),
-              child: Icon(Icons.add, color: Colors.white),
-            )
-          : null,
+      // floatingActionButton: _currentIndex == 2
+      //     ? FloatingActionButton(
+      //         onPressed: () {
+      //           // Handle FAB action for TicketsScreen
+      //         },
+      //         backgroundColor: Color(0xFF44564A),
+      //         child: Icon(Icons.add, color: Colors.white),
+      //       )
+      // : null,
     );
   }
 
   Widget _buildDrawerItem(IconData icon, String title, int index,
       {bool isLogout = false}) {
     return ListTile(
-      leading: Icon(
-        icon,
-        color: isLogout ? Colors.red : Colors.white,
-      ),
+      leading: Icon(icon, color: isLogout ? Colors.red : Colors.white),
       title: Text(
         title,
         style: TextStyle(
@@ -148,7 +148,7 @@ class _MergedScreenState extends State<MergedScreen> {
 
   Future<void> _signOut(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
-    if (context.mounted) {
+    if (mounted) {
       Navigator.pushReplacementNamed(context, '/login');
     }
   }
