@@ -4,14 +4,16 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
 
+import '../../service/data_service.dart';
+
 const Color primaryColor = Color(0xFF44564A);
 final TextStyle boldTextStyle = TextStyle(fontWeight: FontWeight.bold);
 
 class TicketsScreen extends StatefulWidget {
-  const TicketsScreen({Key? key}) : super(key: key);
+  const TicketsScreen({super.key});
 
   @override
-  _TicketsScreenState createState() => _TicketsScreenState();
+  State<TicketsScreen> createState() => _TicketsScreenState();
 }
 
 class _TicketsScreenState extends State<TicketsScreen> {
@@ -46,7 +48,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
       if (mounted) {
         setState(() {
           admins = adminSnapshot.docs.map((doc) {
-            final data = doc.data() as Map<String, dynamic>;
+            final data = doc.data();
             return {
               'id': doc.id,
               'name': data['username'] ?? 'No Name',
@@ -64,18 +66,18 @@ class _TicketsScreenState extends State<TicketsScreen> {
       final userSnapshot =
           await FirebaseFirestore.instance.collection('users').get();
 
-      if (mounted) {
-        setState(() {
-          users = {
-            for (var doc in userSnapshot.docs)
-              doc.id: _handleNullString(doc.data()?['username'])
-          };
-          userCompanies = {
-            for (var doc in userSnapshot.docs)
-              doc.id: List<String>.from(doc.data()?['companies'] ?? [])
-          };
-        });
-      }
+      // if (mounted) {
+      setState(() {
+        users = {
+          for (var doc in userSnapshot.docs)
+            doc.id: _handleNullString(doc.data()['username'])
+        };
+        userCompanies = {
+          for (var doc in userSnapshot.docs)
+            doc.id: List<String>.from(doc.data()['companies'] ?? [])
+        };
+      });
+      // }
     } catch (e) {
       _showSnackBar('Failed to fetch users: $e');
     }
@@ -208,37 +210,37 @@ class _TicketsScreenState extends State<TicketsScreen> {
     });
   }
 
-  Widget _buildFilterBar() {
-    return Row(
-      children: [
-        Expanded(
-          child: DropdownButtonFormField<String>(
-            value: selectedFilter == 'status' ? selectedFilterValue : null,
-            decoration: InputDecoration(
-              labelText: 'Status',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(20.0),
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-            ),
-            hint: const Text('Select Status'),
-            onChanged: (String? newValue) {
-              setState(() {
-                selectedFilter = 'status';
-                selectedFilterValue = newValue;
-              });
-            },
-            items: statusOptions.map<DropdownMenuItem<String>>((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Text(value),
-              );
-            }).toList(),
-          ),
-        ),
-      ],
-    );
-  }
+  // Widget _buildFilterBar() {
+  //   return Row(
+  //     children: [
+  //       Expanded(
+  //         child: DropdownButtonFormField<String>(
+  //           value: selectedFilter == 'status' ? selectedFilterValue : null,
+  //           decoration: InputDecoration(
+  //             labelText: 'Status',
+  //             border: OutlineInputBorder(
+  //               borderRadius: BorderRadius.circular(20.0),
+  //             ),
+  //             contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+  //           ),
+  //           hint: const Text('Select Status'),
+  //           onChanged: (String? newValue) {
+  //             setState(() {
+  //               selectedFilter = 'status';
+  //               selectedFilterValue = newValue;
+  //             });
+  //           },
+  //           items: statusOptions.map<DropdownMenuItem<String>>((String value) {
+  //             return DropdownMenuItem<String>(
+  //               value: value,
+  //               child: Text(value),
+  //             );
+  //           }).toList(),
+  //         ),
+  //       ),
+  //     ],
+  //   );
+  // }
 
   Widget _buildDateSelection() {
     return Row(
@@ -301,7 +303,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
         await FirebaseFirestore.instance.collection('tickets').get();
     List<Map<String, dynamic>> tickets = snapshot.docs.map((doc) {
       return {
-        ...doc.data() as Map<String, dynamic>,
+        ...doc.data(),
         'id': doc.id,
       };
     }).toList();
@@ -489,7 +491,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                 ),
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );
@@ -523,8 +525,8 @@ class _TicketsScreenState extends State<TicketsScreen> {
   }
 
   void _downloadFile(String url) async {
-    if (await canLaunch(url)) {
-      await launch(url);
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url));
     } else {
       _showSnackBar('Could not launch $url');
     }

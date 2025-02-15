@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'create_user_screen.dart';
+import 'test_screen.dart';
 import 'tickets_screen.dart';
 import 'home_screen.dart';
 
@@ -10,12 +11,13 @@ class MergedScreen extends StatefulWidget {
 }
 
 class _MergedScreenState extends State<MergedScreen> {
-  int _currentIndex = 0;
+  int _currentIndex = 3;
 
   final List<Widget> _pages = [
     HomeScreen(),
     CreateUserScreen(),
     TicketsScreen(),
+    TestScreen(),
   ];
 
   @override
@@ -63,10 +65,10 @@ class _MergedScreenState extends State<MergedScreen> {
               DrawerHeader(
                 decoration: BoxDecoration(
                   color: Color(0xFF44564A),
-                  image: DecorationImage(
-                    image: AssetImage('assets/images/drawer_header.jpg'),
-                    fit: BoxFit.cover,
-                  ),
+                  // image: DecorationImage(
+                  //   image: AssetImage('assets/images/logo.jpg'),
+                  //   fit: BoxFit.cover,
+                  // ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,8 +96,9 @@ class _MergedScreenState extends State<MergedScreen> {
               _buildDrawerItem(Icons.dashboard, 'Dashboard', 0),
               _buildDrawerItem(Icons.person_add, 'Create User', 1),
               _buildDrawerItem(Icons.list, 'Tickets', 2),
+              _buildDrawerItem(Icons.settings, 'Test', 3),
               const Divider(color: Colors.white54),
-              _buildDrawerItem(Icons.logout, 'Logout', 3, isLogout: true),
+              _buildDrawerItem(Icons.logout, 'Logout', 4, isLogout: true),
             ],
           ),
         ),
@@ -109,8 +112,8 @@ class _MergedScreenState extends State<MergedScreen> {
               onPressed: () {
                 // Handle FAB action for TicketsScreen
               },
-              child: Icon(Icons.add, color: Colors.white),
               backgroundColor: Color(0xFF44564A),
+              child: Icon(Icons.add, color: Colors.white),
             )
           : null,
     );
@@ -142,6 +145,8 @@ class _MergedScreenState extends State<MergedScreen> {
 
   Future<void> _signOut(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
-    Navigator.pushReplacementNamed(context, '/login');
+    if(mounted) {
+      Navigator.pushReplacementNamed(context, '/login');
+    }
   }
 }

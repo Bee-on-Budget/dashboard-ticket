@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_dashboard/src/config/themes/theme_config.dart';
 import 'firebase_options.dart';
 import 'src/modules/screens/MergedScreen.dart';
 import 'src/modules/screens/create_user_screen.dart';
@@ -20,11 +21,12 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.teal, // Adjust to match the template theme
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-        // Add more theme adjustments here as needed based on the template
-      ),
+      theme: themeConfig,
+      // theme: ThemeData(
+      //   primarySwatch: Colors.teal, // Adjust to match the template theme
+      //   visualDensity: VisualDensity.adaptivePlatformDensity,
+      //   // Add more theme adjustments here as needed based on the template
+      // ),
       home: AuthCheck(),
       routes: {
         '/login': (context) => LoginScreen(),
