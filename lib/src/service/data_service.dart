@@ -75,10 +75,47 @@ class DataService {
       return snapshot.docs.map((doc) {
         final data = doc.data();
         return {
+          'fileId': doc.id, // Ensure fileId is included here
           'url': data['url'] as String,
           'fileName': data['fileName'] as String,
         };
       }).toList();
+    });
+  }
+
+  static Stream<List<Map<String, dynamic>>> getFileComments(
+      String ticketId, String fileId) {
+    return _firestore
+        .collection('tickets')
+        .doc(ticketId)
+        .collection('files')
+        .doc(fileId)
+        .snapshots()
+        .map((doc) {
+      final data = doc.data();
+      return (data?['comments'] as List<dynamic>)
+          .map((comment) => Map<String, dynamic>.from(comment))
+          .toList();
+    });
+  }
+
+  static Future<void> addComment(
+      String ticketId, String fileId, String message, String senderId) async {
+    final docRef = _firestore
+        .collection('tickets')
+        .doc(ticketId)
+        .collection('files')
+        .doc(fileId);
+
+    await docRef.update({
+      'comments': FieldValue.arrayUnion([
+        {
+          'message': message,
+          'senderId': senderId,
+          'timestamp': FieldValue.serverTimestamp(),
+        }
+      ]),
+      'isThereMsgNotRead': true,
     });
   }
 }

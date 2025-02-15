@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_dashboard/src/modules/models/ticket_file.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
 
 import '../../service/data_service.dart';
+import 'comment_screen.dart';
 
 const Color primaryColor = Color(0xFF44564A);
 final TextStyle boldTextStyle = TextStyle(fontWeight: FontWeight.bold);
@@ -490,6 +492,25 @@ class _TicketsScreenState extends State<TicketsScreen> {
                   ),
                   child: ListTile(
                     title: Text(file['fileName'] ?? 'Unknown File'),
+                    // Example of handling potential null values
+                    onTap: () {
+                      final fileId = file['fileId'];
+                      if (fileId != null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CommentScreen(
+                              ticketId: selectedTicketId!,
+                              file: TicketFile.fromJson(
+                                  json: file, fileId: fileId),
+                            ),
+                          ),
+                        );
+                      } else {
+                        print('File ID is null');
+                      }
+                    },
+
                     trailing: IconButton(
                       icon: const Icon(Icons.download, color: primaryColor),
                       onPressed: () {
