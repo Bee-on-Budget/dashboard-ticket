@@ -50,7 +50,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
             password,
             username,
             _companies,
-            _selectedPaymentMethods, // Pass as list, not string
+            _selectedPaymentMethods,
             _selectedRole,
           )
         : await AuthService().createUserWithPhoneAndPassword(
@@ -58,17 +58,53 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
             password,
             username,
             _companies,
-            _selectedPaymentMethods, // Pass as list, not string
+            _selectedPaymentMethods,
             _selectedRole,
           );
 
     Navigator.pop(context);
 
     if (user != null) {
-      Navigator.pushReplacementNamed(context, '/home');
+      _resetForm(); // Reset the form
+      _showSuccessDialog('User created successfully!');
+      Future.delayed(const Duration(seconds: 2), () {
+        Navigator.pushReplacementNamed(context, '/home');
+      });
     } else {
       _showSnackBar('Registration failed');
     }
+  }
+
+  void _resetForm() {
+    _usernameController.clear();
+    _emailController.clear();
+    _passwordController.clear();
+    _phoneController.clear();
+    _companyController.clear();
+    setState(() {
+      _companies.clear();
+      _selectedPaymentMethods.clear();
+      _selectedRole = 'user'; // Reset to default role
+    });
+  }
+
+  void _showSuccessDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Success'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close the dialog
+              Navigator.pushReplacementNamed(context, '/home');
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _addCompany() {
