@@ -427,73 +427,82 @@ class _TicketsScreenState extends State<TicketsScreen> {
   Widget _buildTicketDetail() {
     if (selectedTicketData == null) return Container();
 
-    final files = selectedTicketData?['files'] as List<dynamic>? ?? [];
-    String status = selectedTicketData?['status'] ?? 'No Status';
-    String publisherName = users[selectedTicketData?['userId']] ?? 'Unknown';
+    return StreamBuilder<List<Map<String, String>>>(
+      stream: DataService.getTicketFiles(selectedTicketId!),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text('No attachments available'));
+        }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            selectedTicketData?['title'] ?? 'No Title',
-            style: boldTextStyle.copyWith(fontSize: 24),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            selectedTicketData?['description'] ?? 'No Description',
-            style: const TextStyle(fontSize: 16),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Published by: $publisherName',
-            style: const TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            value: status,
-            decoration: InputDecoration(
-              labelText: 'Status',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15),
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                selectedTicketData?['title'] ?? 'No Title',
+                style: boldTextStyle.copyWith(fontSize: 24),
               ),
-            ),
-            onChanged: (String? newValue) {
-              _updateTicketStatus(selectedTicketId!, newValue!);
-            },
-            items: statusOptions.map<DropdownMenuItem<String>>((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Text(value),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Attachments:',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          ...files.map((fileUrl) {
-            return Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
+              const SizedBox(height: 16),
+              Text(
+                selectedTicketData?['description'] ?? 'No Description',
+                style: const TextStyle(fontSize: 16),
               ),
-              child: ListTile(
-                title: Text(fileUrl),
-                trailing: IconButton(
-                  icon: const Icon(Icons.download, color: primaryColor),
-                  onPressed: () {
-                    _downloadFile(fileUrl);
-                  },
+              const SizedBox(height: 16),
+              Text(
+                'Published by: ${users[selectedTicketData?['userId']] ?? 'Unknown'}',
+                style: const TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: selectedTicketData?['status'],
+                decoration: InputDecoration(
+                  labelText: 'Status',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
                 ),
+                onChanged: (String? newValue) {
+                  _updateTicketStatus(selectedTicketId!, newValue!);
+                },
+                items:
+                    statusOptions.map<DropdownMenuItem<String>>((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
               ),
-            );
-          }),
-        ],
-      ),
+              const SizedBox(height: 24),
+              const Text(
+                'Attachments:',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              ...snapshot.data!.map((file) {
+                return Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: ListTile(
+                    title: Text(file['fileName'] ?? 'Unknown File'),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.download, color: primaryColor),
+                      onPressed: () {
+                        _downloadFile(file['url']!);
+                      },
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
     );
   }
 

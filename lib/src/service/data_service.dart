@@ -64,4 +64,21 @@ class DataService {
       return ticket.copyWith(files: files);
     });
   }
+
+  static Stream<List<Map<String, String>>> getTicketFiles(String ticketId) {
+    return _firestore
+        .collection('tickets')
+        .doc(ticketId)
+        .collection('files')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'url': data['url'] as String,
+          'fileName': data['fileName'] as String,
+        };
+      }).toList();
+    });
+  }
 }
