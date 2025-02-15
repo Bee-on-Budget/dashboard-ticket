@@ -122,7 +122,10 @@ class _MergedScreenState extends State<MergedScreen> {
   Widget _buildDrawerItem(IconData icon, String title, int index,
       {bool isLogout = false}) {
     return ListTile(
-      leading: Icon(icon, color: isLogout ? Colors.red : Colors.white),
+      leading: Icon(
+        icon,
+        color: isLogout ? Colors.red : Colors.white,
+      ),
       title: Text(
         title,
         style: TextStyle(
@@ -145,7 +148,7 @@ class _MergedScreenState extends State<MergedScreen> {
 
   Future<void> _signOut(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
-    if(mounted) {
+    if (context.mounted) {
       Navigator.pushReplacementNamed(context, '/login');
     }
   }

@@ -27,6 +27,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     'PayPal',
     'Bank Transfer',
   ];
+
   Future<void> _registerUser() async {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
@@ -106,15 +107,15 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-      ),
       body: SingleChildScrollView(
         child: Center(
           child: Container(
             width: screenWidth > 800 ? 600 : screenWidth - 40,
             padding: const EdgeInsets.all(24.0),
-            margin: const EdgeInsets.symmetric(vertical: 20.0),
+            margin: const EdgeInsets.only(
+              top: 80.0,
+              bottom: 40.0,
+            ),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
@@ -224,16 +225,16 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
         const SizedBox(height: 24),
         ElevatedButton(
           onPressed: _registerUser,
-          child: Text(
-            _isEmailSelected ? 'Register with Email' : 'Register with Phone',
-            style: const TextStyle(color: Colors.white),
-          ),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF44564A),
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
+          ),
+          child: Text(
+            _isEmailSelected ? 'Register with Email' : 'Register with Phone',
+            style: const TextStyle(color: Colors.white),
           ),
         ),
       ],
@@ -310,10 +311,9 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                 });
               },
               selectedColor: const Color(0xFF44564A),
-              labelStyle: TextStyle(
-                color: isSelected ? Colors.white : Colors.black,
-                fontWeight: FontWeight.bold,
-              ),
+              labelStyle: Theme.of(context).textTheme.labelMedium!.copyWith(
+                    color: isSelected ? Colors.white : Colors.black,
+                  ),
               backgroundColor: Colors.grey[200],
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
