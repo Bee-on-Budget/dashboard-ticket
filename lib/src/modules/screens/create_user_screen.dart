@@ -44,34 +44,36 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
 
     _showLoadingDialog();
 
-    final user = _isEmailSelected
+    final errorMessage = _isEmailSelected
         ? await AuthService().createUserWithEmailAndPassword(
-            emailOrPhone,
-            password,
-            username,
-            _companies,
-            _selectedPaymentMethods,
-            _selectedRole,
+            email: emailOrPhone,
+            password: password,
+            username: username,
+            companies: _companies,
+            paymentMethods: _selectedPaymentMethods,
+            role: _selectedRole,
           )
         : await AuthService().createUserWithPhoneAndPassword(
-            emailOrPhone,
-            password,
-            username,
-            _companies,
-            _selectedPaymentMethods,
-            _selectedRole,
+            phone: emailOrPhone,
+            password: password,
+            username: username,
+            companies: _companies,
+            paymentMethods: _selectedPaymentMethods,
+            role: _selectedRole,
           );
 
-    Navigator.pop(context);
+    Navigator.pop(context); // Close the loading dialog
 
-    if (user != null) {
+    if (errorMessage == null) {
+      // Registration successful
       _resetForm(); // Reset the form
       _showSuccessDialog('User created successfully!');
       Future.delayed(const Duration(seconds: 2), () {
         Navigator.pushReplacementNamed(context, '/home');
       });
     } else {
-      _showSnackBar('Registration failed');
+      // Registration failed, show the actual error message
+      _showSnackBar(errorMessage);
     }
   }
 
@@ -122,6 +124,13 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.redAccent,
+        duration: const Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'Dismiss',
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+        ),
       ),
     );
   }

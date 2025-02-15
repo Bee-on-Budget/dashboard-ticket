@@ -16,82 +16,57 @@ class AuthService {
   ];
 
   // Create a user with email and password
-  Future<User?> createUserWithEmailAndPassword(
-    String email,
-    String password,
-    String username,
-    List<String> companies,
-    List<String> paymentMethods, // Multiple payment methods
-    String role,
-  ) async {
-    // Validate payment methods
-    if (!paymentMethods
-        .every((method) => validPaymentMethods.contains(method))) {
-      print(
-          'Invalid payment methods: ${paymentMethods.where((method) => !validPaymentMethods.contains(method)).join(', ')}');
-      return null;
-    }
-
+  Future<String?> createUserWithEmailAndPassword({
+    required String email,
+    required String password,
+    required String username,
+    required List<String> companies,
+    required List<String> paymentMethods,
+    required String role,
+  }) async {
     try {
-      // Create user in Firebase Authentication
-      final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
+      // Create user with email and password
+      final UserCredential userCredential =
+          await _firebaseAuth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Store user info in Firestore
+      // Save additional user data to Firestore
       await _saveUserToFirestore(
         userCredential.user!.uid,
-        email, // Use email as the identifier
+        email,
         username,
         companies,
         paymentMethods,
         role,
       );
 
-      return userCredential.user;
+      return null; // No error, registration successful
+    } on FirebaseAuthException catch (e) {
+      return e.message; // Return the actual error message
     } catch (e) {
-      print('Error during user creation: $e');
-      return null;
+      return e.toString(); // Handle any other exceptions
     }
   }
 
-  Future<User?> createUserWithPhoneAndPassword(
-    String phone,
-    String password,
-    String username,
-    List<String> companies,
-    List<String> paymentMethods,
-    String role,
-  ) async {
-    if (!paymentMethods
-        .every((method) => validPaymentMethods.contains(method))) {
-      print(
-          'Invalid payment methods: ${paymentMethods.where((method) => !validPaymentMethods.contains(method)).join(', ')}');
-      return null;
-    }
-
+  Future<String?> createUserWithPhoneAndPassword({
+    required String phone,
+    required String password,
+    required String username,
+    required List<String> companies,
+    required List<String> paymentMethods,
+    required String role,
+  }) async {
     try {
-      final fakeEmail = '$phone@phone.com';
-
-      final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
-        email: fakeEmail,
-        password: password,
-      );
-
-      await _saveUserToFirestore(
-        userCredential.user!.uid,
-        phone,
-        username,
-        companies,
-        paymentMethods,
-        role,
-      );
-
-      return userCredential.user;
+      // Placeholder for custom phone + password registration
+      // Firebase does not natively support phone + password registration.
+      // You may need to implement a custom solution for this.
+      return 'Phone registration not implemented yet';
+    } on FirebaseAuthException catch (e) {
+      return e.message; // Return the actual error message
     } catch (e) {
-      print('Error during user creation with phone: $e');
-      return null;
+      return e.toString(); // Handle any other exceptions
     }
   }
 
@@ -139,14 +114,11 @@ class AuthService {
       final user = userCredential.user;
       if (user != null) {
         final role = await getRole(user.uid);
-        if (role != null) {
-          print("User role: $role");
-          if (role == 'admin') {
-            return user; // Allow admin users to proceed
-          } else {
-            print('Access denied: User is not an admin.');
-            return null; // Return null or handle it as needed for non-admin users
-          }
+        if (role == 'admin') {
+          return user; // Allow admin users to proceed
+        } else {
+          print('Access denied: User is not an admin.');
+          return null; // Return null or handle it as needed for non-admin users
         }
       }
       return null;
@@ -172,14 +144,11 @@ class AuthService {
       final user = userCredential.user;
       if (user != null) {
         final role = await getRole(user.uid);
-        if (role != null) {
-          print("User role: $role");
-          if (role == 'admin') {
-            return user; // Allow admin users to proceed
-          } else {
-            print('Access denied: User is not an admin.');
-            return null; // Return null or handle it as needed for non-admin users
-          }
+        if (role == 'admin') {
+          return user; // Allow admin users to proceed
+        } else {
+          print('Access denied: User is not an admin.');
+          return null; // Return null or handle it as needed for non-admin users
         }
       }
       return null;
@@ -201,7 +170,6 @@ class AuthService {
     }
   }
 
-  // Send password reset email
   Future<void> sendPasswordResetEmail(String email) async {
     try {
       await _firebaseAuth.sendPasswordResetEmail(email: email);
