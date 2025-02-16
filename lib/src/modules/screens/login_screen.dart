@@ -113,33 +113,40 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     SizedBox(height: 30),
-                    // Toggle between Email and Phone login
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        ChoiceChip(
-                          label: const Text('Email'),
-                          selected: isEmailSelected,
-                          onSelected: (value) {
-                            setState(() {
-                              isEmailSelected = true;
-                              _identifierController.clear();
-                            });
-                          },
+                        SizedBox(
+                          width: 120, // Set the desired width
+                          child: ChoiceChip(
+                            label: const Text('Email'),
+                            selected: isEmailSelected,
+                            onSelected: (value) {
+                              setState(() {
+                                isEmailSelected = true;
+                                _identifierController.clear();
+                              });
+                            },
+                          ),
                         ),
                         const SizedBox(width: 20),
-                        ChoiceChip(
-                          label: const Text('Phone'),
-                          selected: !isEmailSelected,
-                          onSelected: (value) {
-                            setState(() {
-                              isEmailSelected = false;
-                              _identifierController.clear();
-                            });
-                          },
+                        SizedBox(
+                          width: 120, // Set the desired width
+                          child: ChoiceChip(
+                            label: const Text('Phone'),
+                            selected: !isEmailSelected,
+                            onSelected: (value) {
+                              setState(() {
+                                isEmailSelected = false;
+                                _identifierController.clear();
+                              });
+                            },
+                          ),
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 30),
 
                     // Input field for email or phone

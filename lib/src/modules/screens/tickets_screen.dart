@@ -9,7 +9,10 @@ import '../../service/data_service.dart';
 import 'comment_screen.dart';
 
 const Color primaryColor = Color(0xFF44564A);
-final TextStyle boldTextStyle = TextStyle(fontWeight: FontWeight.bold);
+const Color backgroundColor = Color(0xFFF5F5F5);
+const Color cardColor = Colors.white;
+final TextStyle boldTextStyle =
+    TextStyle(fontWeight: FontWeight.bold, color: primaryColor);
 
 class TicketsScreen extends StatefulWidget {
   const TicketsScreen({super.key});
@@ -68,7 +71,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
       final userSnapshot =
           await FirebaseFirestore.instance.collection('users').get();
 
-      // if (mounted) {
       setState(() {
         users = {
           for (var doc in userSnapshot.docs)
@@ -79,7 +81,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
             doc.id: List<String>.from(doc.data()['companies'] ?? [])
         };
       });
-      // }
     } catch (e) {
       _showSnackBar('Failed to fetch users: $e');
     }
@@ -104,37 +105,49 @@ class _TicketsScreenState extends State<TicketsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(selectedTicketId == null ? 'Tickets' : 'Ticket Details'),
-        elevation: 0,
-        leading: selectedTicketId != null
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () {
-                  setState(() {
-                    selectedTicketId = null;
-                    selectedTicketData = null;
-                  });
-                },
-              )
-            : null,
-        actions: [
-          if (selectedTicketId == null)
-            IconButton(
-              icon: const Icon(Icons.clear_all, color: Colors.white),
-              onPressed: _clearAllFilters,
+      backgroundColor: backgroundColor,
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            // Indicate the current page (Tickets or Ticket Details)
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    if (selectedTicketId != null)
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: primaryColor),
+                        onPressed: () {
+                          setState(() {
+                            selectedTicketId = null;
+                            selectedTicketData = null;
+                          });
+                        },
+                      ),
+                    Text(
+                      selectedTicketId == null ? 'Tickets' : 'Ticket Details',
+                      style: boldTextStyle.copyWith(fontSize: 24),
+                    ),
+                  ],
+                ),
+              ),
             ),
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildSearchAndFilterBar(),
-          Expanded(
-            child: selectedTicketId == null
-                ? _buildTicketList()
-                : _buildTicketDetail(),
-          ),
-        ],
+            const SizedBox(height: 16),
+            _buildSearchAndFilterBar(),
+            const SizedBox(height: 16),
+            Expanded(
+              child: selectedTicketId == null
+                  ? _buildTicketList()
+                  : _buildTicketDetail(),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -150,56 +163,90 @@ class _TicketsScreenState extends State<TicketsScreen> {
   }
 
   Widget _buildSearchAndFilterBar() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          TextField(
-            controller: searchController,
-            decoration: InputDecoration(
-              hintText: 'Search tickets...',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(20.0),
-                borderSide: BorderSide.none,
-              ),
-              filled: true,
-              fillColor: Colors.grey[200],
-              prefixIcon: const Icon(Icons.search, color: primaryColor),
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width:
+                      MediaQuery.of(context).size.width * 0.4, // Adjusted width
+                  child: TextField(
+                    controller: searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search tickets...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[200],
+                      prefixIcon: const Icon(Icons.search, color: primaryColor),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                    ),
+                    onChanged: _onSearchChanged,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _buildStatusDropdown(), // Status dropdown in the same line
+                const SizedBox(width: 10),
+                IconButton(
+                  icon: const Icon(Icons.calendar_today, color: primaryColor),
+                  onPressed: () => _showDateRangePicker(context),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.clear_all, color: primaryColor),
+                  onPressed: _clearAllFilters,
+                ),
+              ],
             ),
-            onChanged: _onSearchChanged,
-          ),
-          const SizedBox(height: 10),
-          _buildStatusDropdown(),
-          _buildDateSelection(),
-        ],
+            if (selectedDateRange != null) // Display selected date range below
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text(
+                  '${DateFormat('MMM dd').format(selectedDateRange!.start)} - ${DateFormat('MMM dd').format(selectedDateRange!.end)}',
+                  style: const TextStyle(
+                      color: primaryColor, fontSize: 12), // Smaller text
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildStatusDropdown() {
-    return DropdownButtonFormField<String>(
-      value: selectedFilter == 'status' ? selectedFilterValue : null,
-      decoration: InputDecoration(
-        labelText: 'Status',
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20.0),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(10),
       ),
-      hint: const Text('Select Status'),
-      onChanged: (String? newValue) {
-        setState(() {
-          selectedFilter = 'status';
-          selectedFilterValue = newValue;
-        });
-      },
-      items: statusOptions.map<DropdownMenuItem<String>>((String value) {
-        return DropdownMenuItem<String>(
-          value: value,
-          child: Text(value),
-        );
-      }).toList(),
+      child: DropdownButton<String>(
+        value: selectedFilter == 'status' ? selectedFilterValue : null,
+        hint: const Text('Status', style: TextStyle(color: primaryColor)),
+        icon: const Icon(Icons.arrow_drop_down, color: primaryColor),
+        underline: const SizedBox(),
+        onChanged: (String? newValue) {
+          setState(() {
+            selectedFilter = 'status';
+            selectedFilterValue = newValue;
+          });
+        },
+        items: statusOptions.map<DropdownMenuItem<String>>((String value) {
+          return DropdownMenuItem<String>(
+            value: value,
+            child: Text(value, style: const TextStyle(color: primaryColor)),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -211,38 +258,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
       });
     });
   }
-
-  // Widget _buildFilterBar() {
-  //   return Row(
-  //     children: [
-  //       Expanded(
-  //         child: DropdownButtonFormField<String>(
-  //           value: selectedFilter == 'status' ? selectedFilterValue : null,
-  //           decoration: InputDecoration(
-  //             labelText: 'Status',
-  //             border: OutlineInputBorder(
-  //               borderRadius: BorderRadius.circular(20.0),
-  //             ),
-  //             contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-  //           ),
-  //           hint: const Text('Select Status'),
-  //           onChanged: (String? newValue) {
-  //             setState(() {
-  //               selectedFilter = 'status';
-  //               selectedFilterValue = newValue;
-  //             });
-  //           },
-  //           items: statusOptions.map<DropdownMenuItem<String>>((String value) {
-  //             return DropdownMenuItem<String>(
-  //               value: value,
-  //               child: Text(value),
-  //             );
-  //           }).toList(),
-  //         ),
-  //       ),
-  //     ],
-  //   );
-  // }
 
   Widget _buildDateSelection() {
     return Row(
@@ -285,7 +300,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
           ),
           child: Dialog(
             child: Container(
-              width: MediaQuery.of(context).size.width * 0.8, // Smaller width
+              width: MediaQuery.of(context).size.width * 0.8,
               child: child,
             ),
           ),
@@ -367,6 +382,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
               ),
+              margin: const EdgeInsets.only(bottom: 16),
               child: InkWell(
                 borderRadius: BorderRadius.circular(15),
                 onTap: () {
@@ -405,15 +421,21 @@ class _TicketsScreenState extends State<TicketsScreen> {
                             assignedAdminId.isNotEmpty ? assignedAdminId : null,
                         hint: const Text('Assign Admin'),
                         onChanged: (String? newValue) {
-                          _assignAdminToTicket(ticket['id'], newValue!);
+                          _assignAdminToTicket(ticket['id'], newValue);
                         },
-                        items: admins.map<DropdownMenuItem<String>>(
-                            (Map<String, dynamic> admin) {
-                          return DropdownMenuItem<String>(
-                            value: admin['id'],
-                            child: Text(admin['name']),
-                          );
-                        }).toList(),
+                        items: [
+                          const DropdownMenuItem<String>(
+                            value: null, // Use null to represent unassigned
+                            child: Text('Unassigned'),
+                          ),
+                          ...admins.map<DropdownMenuItem<String>>(
+                              (Map<String, dynamic> admin) {
+                            return DropdownMenuItem<String>(
+                              value: admin['id'],
+                              child: Text(admin['name']),
+                            );
+                          }).toList(),
+                        ],
                       ),
                     ],
                   ),
@@ -492,7 +514,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
                   ),
                   child: ListTile(
                     title: Text(file['fileName'] ?? 'Unknown File'),
-                    // Example of handling potential null values
                     onTap: () {
                       final fileId = file['fileId'];
                       if (fileId != null) {
@@ -510,7 +531,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
                         print('File ID is null');
                       }
                     },
-
                     trailing: IconButton(
                       icon: const Icon(Icons.download, color: primaryColor),
                       onPressed: () {
@@ -527,14 +547,16 @@ class _TicketsScreenState extends State<TicketsScreen> {
     );
   }
 
-  void _assignAdminToTicket(String ticketId, String adminId) {
+  void _assignAdminToTicket(String ticketId, String? adminId) {
     FirebaseFirestore.instance
         .collection('tickets')
         .doc(ticketId)
         .update({'assignedAdminId': adminId}).then((_) {
-      _showSnackBar('Admin assigned successfully');
+      _showSnackBar(adminId == null
+          ? 'Admin unassigned successfully'
+          : 'Admin assigned successfully');
     }).catchError((error) {
-      _showSnackBar('Failed to assign admin: $error');
+      _showSnackBar('Failed to update admin assignment: $error');
     });
   }
 
