@@ -530,7 +530,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                           ),
                         );
                       } else {
-                        print('File ID is null');
+                        debugPrint('File ID is null');
                       }
                     },
                     trailing: IconButton(
