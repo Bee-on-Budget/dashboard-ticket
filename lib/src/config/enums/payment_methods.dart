@@ -21,7 +21,7 @@ enum PaymentMethods {
 
   @override
   String toString() {
-    return "${name[0].toUpperCase()}${name.substring(1)}";
+    return name[0].toUpperCase() + name.substring(1);
   }
 
 }
