@@ -184,10 +184,8 @@ class _TicketsScreenState extends State<TicketsScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 SizedBox(
-                  width: max(
-                    MediaQuery.of(context).size.width * 0.4,
-                    300,
-                  ), // Adjusted width
+                  // Adjusted width
+                  width: MediaQuery.of(context).size.width * 0.4,
                   child: TextField(
                     controller: searchController,
                     decoration: InputDecoration(
