@@ -198,7 +198,7 @@ class HomeScreen extends StatelessWidget {
           sections: statusData.map((data) {
             return PieChartSectionData(
               value: data['value'].toDouble(),
-              color: _getColor(data['status']),
+              color: TicketStatus.fromString(data['status']).getColor(),
               title: data['status'],
               radius: 50,
               titleStyle: const TextStyle(
@@ -248,18 +248,5 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Color _getColor(String status) {
-    switch (status) {
-      case 'Open':
-        return Colors.blue;
-      case 'In Progress':
-        return Colors.orange;
-      case 'Closed':
-        return Colors.green;
-      default:
-        return Colors.grey;
-    }
   }
 }

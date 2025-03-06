@@ -410,7 +410,9 @@ class _TicketsScreenState extends State<TicketsScreen> {
                           Text(
                             'Status: ${ticket['status'] ?? 'No Status'}',
                             style: TextStyle(
-                              color: _getStatusColor(ticket['status']),
+                              color: TicketStatus.fromString(
+                                ticket['status'],
+                              ).getColor(),
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -581,19 +583,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
       await launchUrl(Uri.parse(url));
     } else {
       _showSnackBar('Could not launch $url');
-    }
-  }
-
-  Color _getStatusColor(String? status) {
-    switch (status) {
-      case 'Open':
-        return Colors.blue;
-      case 'In Progress':
-        return Colors.orange;
-      case 'Closed':
-        return Colors.green;
-      default:
-        return Colors.grey;
     }
   }
 }
