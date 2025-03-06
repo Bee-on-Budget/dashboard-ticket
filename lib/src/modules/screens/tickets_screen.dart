@@ -146,7 +146,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            _buildSearchAndFilterBar(),
+            if (selectedTicketId == null) _buildSearchAndFilterBar(),
             const SizedBox(height: 16),
             Expanded(
               child: selectedTicketId == null
