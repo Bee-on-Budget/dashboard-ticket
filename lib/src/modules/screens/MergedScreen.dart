@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dashboard/src/modules/screens/profile_screen.dart';
 import 'create_user_screen.dart';
 import 'test_screen.dart';
 import 'tickets_screen.dart';
@@ -17,6 +18,7 @@ class _MergedScreenState extends State<MergedScreen> {
     HomeScreen(),
     CreateUserScreen(),
     TicketsScreen(),
+    ProfileScreen(),
     TestScreen(),
   ];
 
@@ -99,9 +101,10 @@ class _MergedScreenState extends State<MergedScreen> {
               _buildDrawerItem(Icons.dashboard, 'Dashboard', 0),
               _buildDrawerItem(Icons.person_add, 'Create User', 1),
               _buildDrawerItem(Icons.list, 'Tickets', 2),
-              _buildDrawerItem(Icons.settings, 'Test', 3),
+              _buildDrawerItem(Icons.person, 'Profile', 3),
+              _buildDrawerItem(Icons.settings, 'Test', 4),
               const Divider(color: Colors.white54),
-              _buildDrawerItem(Icons.logout, 'Logout', 4, isLogout: true),
+              _buildDrawerItem(Icons.logout, 'Logout', 5, isLogout: true),
             ],
           ),
         ),
