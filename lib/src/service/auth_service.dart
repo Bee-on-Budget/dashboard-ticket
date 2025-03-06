@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -92,12 +93,12 @@ class AuthService {
           'role': role,
           'createdAt': FieldValue.serverTimestamp(),
         });
-        print("User successfully saved to Firestore!");
+        debugPrint("User successfully saved to Firestore!");
       } else {
-        print("User already exists in Firestore.");
+        debugPrint("User already exists in Firestore.");
       }
     } catch (e) {
-      print('Error saving user to Firestore: $e');
+      debugPrint('Error saving user to Firestore: $e');
     }
   }
 
@@ -117,13 +118,13 @@ class AuthService {
         if (role == 'admin') {
           return user; // Allow admin users to proceed
         } else {
-          print('Access denied: User is not an admin.');
+          debugPrint('Access denied: User is not an admin.');
           return null; // Return null or handle it as needed for non-admin users
         }
       }
       return null;
     } catch (e) {
-      print('Error during email sign-in: $e');
+      debugPrint('Error during email sign-in: $e');
       return null;
     }
   }
@@ -147,13 +148,13 @@ class AuthService {
         if (role == 'admin') {
           return user; // Allow admin users to proceed
         } else {
-          print('Access denied: User is not an admin.');
+          debugPrint('Access denied: User is not an admin.');
           return null; // Return null or handle it as needed for non-admin users
         }
       }
       return null;
     } catch (e) {
-      print('Error during phone sign-in: $e');
+      debugPrint('Error during phone sign-in: $e');
       return null;
     }
   }
@@ -165,7 +166,7 @@ class AuthService {
           await _firestore.collection('users').doc(uid).get();
       return userDoc['role'] as String?;
     } catch (e) {
-      print('Error fetching user role: $e');
+      debugPrint('Error fetching user role: $e');
       return null;
     }
   }
@@ -174,7 +175,7 @@ class AuthService {
     try {
       await _firebaseAuth.sendPasswordResetEmail(email: email);
     } catch (e) {
-      print('Error sending password reset email: $e');
+      debugPrint('Error sending password reset email: $e');
     }
   }
 }
