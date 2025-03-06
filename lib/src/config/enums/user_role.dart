@@ -16,6 +16,6 @@ enum UserRole {
 
   @override
   String toString(){
-    return name[0].toUpperCase().substring(1);
+    return name[0].toUpperCase() + name.substring(1);
   }
 }
