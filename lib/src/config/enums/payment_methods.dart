@@ -6,13 +6,13 @@ enum PaymentMethods {
 
   static PaymentMethods? fromString(String value) {
     switch (value) {
-      case 'payPal':
+      case 'PayPal':
         return PaymentMethods.payPal;
-      case 'applePay':
+      case 'ApplePay':
         return PaymentMethods.applePay;
-      case 'transfer':
+      case 'Transfer':
         return PaymentMethods.transfer;
-      case 'cash':
+      case 'Cash':
         return PaymentMethods.cash;
       default:
         return null;
