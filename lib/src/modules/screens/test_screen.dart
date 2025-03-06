@@ -1,17 +1,16 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dashboard/src/config/enums/ticket_status.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
 
-import '../../service/data_service.dart';
 import '../models/ticket.dart';
-import '../models/user.dart';
+import '../../service/data_service.dart';
+import '../../config/enums/ticket_status.dart';
 
 class TestScreen extends StatelessWidget {
   const TestScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final userUid = FirebaseAuth.instance.currentUser!.uid;
+    // final userUid = FirebaseAuth.instance.currentUser!.uid;
     return Scaffold(
       appBar: AppBar(
         title: Text("Test Screen"),

@@ -1,14 +1,17 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dashboard/src/modules/screens/profile_screen.dart';
-import 'create_user_screen.dart';
-import 'test_screen.dart';
-import 'tickets_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+// import 'test_screen.dart';
 import 'home_screen.dart';
+import 'create_user_screen.dart';
+import 'tickets_screen.dart';
+import 'profile_screen.dart';
 
 class MergedScreen extends StatefulWidget {
+  const MergedScreen({super.key});
+
   @override
-  _MergedScreenState createState() => _MergedScreenState();
+  State<MergedScreen> createState() => _MergedScreenState();
 }
 
 class _MergedScreenState extends State<MergedScreen> {
@@ -19,7 +22,7 @@ class _MergedScreenState extends State<MergedScreen> {
     CreateUserScreen(),
     TicketsScreen(),
     ProfileScreen(),
-    TestScreen(),
+    // TestScreen(),
   ];
 
   @override
@@ -49,9 +52,8 @@ class _MergedScreenState extends State<MergedScreen> {
           // Logout Icon
           IconButton(
             icon: Icon(Icons.logout, color: Colors.white),
-            onPressed: () {
-              _signOut(context); // Logout immediately
-            },
+            onPressed: _signOut // Logout immediately
+            ,
           ),
         ],
       ),
@@ -102,9 +104,9 @@ class _MergedScreenState extends State<MergedScreen> {
               _buildDrawerItem(Icons.person_add, 'Create User', 1),
               _buildDrawerItem(Icons.list, 'Tickets', 2),
               _buildDrawerItem(Icons.person, 'Profile', 3),
-              _buildDrawerItem(Icons.settings, 'Test', 4),
+              // _buildDrawerItem(Icons.settings, 'Test', 4),
               const Divider(color: Colors.white54),
-              _buildDrawerItem(Icons.logout, 'Logout', 5, isLogout: true),
+              _buildDrawerItem(Icons.logout, 'Logout', 4, isLogout: true),
             ],
           ),
         ),
@@ -128,7 +130,10 @@ class _MergedScreenState extends State<MergedScreen> {
   Widget _buildDrawerItem(IconData icon, String title, int index,
       {bool isLogout = false}) {
     return ListTile(
-      leading: Icon(icon, color: isLogout ? Colors.red : Colors.white),
+      leading: Icon(
+        icon,
+        color: isLogout ? Colors.red : Colors.white,
+      ),
       title: Text(
         title,
         style: TextStyle(
@@ -138,7 +143,7 @@ class _MergedScreenState extends State<MergedScreen> {
       ),
       onTap: () {
         if (isLogout) {
-          _signOut(context);
+          _signOut();
         } else {
           setState(() {
             _currentIndex = index;
@@ -149,7 +154,7 @@ class _MergedScreenState extends State<MergedScreen> {
     );
   }
 
-  Future<void> _signOut(BuildContext context) async {
+  Future<void> _signOut() async {
     await FirebaseAuth.instance.signOut();
     if (mounted) {
       Navigator.pushReplacementNamed(context, '/login');

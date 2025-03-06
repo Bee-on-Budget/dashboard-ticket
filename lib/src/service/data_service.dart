@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_dashboard/src/modules/models/ticket_file.dart';
 
+import '../modules/models/ticket_file.dart';
 import '../modules/models/ticket.dart';
 import '../modules/models/user.dart';
 

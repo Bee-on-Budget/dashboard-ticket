@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import '../../service/auth_service.dart';
 
 class CreateUserScreen extends StatefulWidget {
-  const CreateUserScreen({Key? key}) : super(key: key);
+  const CreateUserScreen({super.key});
 
   @override
-  _CreateUserScreenState createState() => _CreateUserScreenState();
+  State<CreateUserScreen> createState() => _CreateUserScreenState();
 }
 
 class _CreateUserScreenState extends State<CreateUserScreen> {
@@ -16,8 +16,8 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   final TextEditingController _companyController = TextEditingController();
 
   bool _isEmailSelected = true;
-  List<String> _companies = [];
-  List<String> _selectedPaymentMethods = [];
+  final List<String> _companies = [];
+  final List<String> _selectedPaymentMethods = [];
   String _selectedRole = 'user';
 
   final List<String> _availablePaymentMethods = [
@@ -62,14 +62,18 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
             role: _selectedRole,
           );
 
-    Navigator.pop(context); // Close the loading dialog
+    if (mounted) {
+      Navigator.pop(context); // Close the loading dialog
+    }
 
     if (errorMessage == null) {
       // Registration successful
       _resetForm(); // Reset the form
       _showSuccessDialog('User created successfully!');
       Future.delayed(const Duration(seconds: 2), () {
-        Navigator.pushReplacementNamed(context, '/home');
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/home');
+        }
       });
     } else {
       // Registration failed, show the actual error message
@@ -166,7 +170,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
+                  color: Colors.grey.withValues(alpha: 0.2),
                   spreadRadius: 5,
                   blurRadius: 10,
                   offset: const Offset(0, 3),
@@ -238,26 +242,49 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
         _buildTextField(_usernameController, 'Username', Icons.person),
         const SizedBox(height: 16),
         if (_isEmailSelected)
-          _buildTextField(_emailController, 'Email', Icons.email,
-              keyboardType: TextInputType.emailAddress),
+          _buildTextField(
+            _emailController,
+            'Email',
+            Icons.email,
+            keyboardType: TextInputType.emailAddress,
+          ),
         if (!_isEmailSelected)
-          _buildTextField(_phoneController, 'Phone', Icons.phone,
-              keyboardType: TextInputType.phone),
+          _buildTextField(
+            _phoneController,
+            'Phone',
+            Icons.phone,
+            keyboardType: TextInputType.phone,
+          ),
         const SizedBox(height: 16),
-        _buildTextField(_passwordController, 'Password', Icons.lock,
-            isPassword: true),
+        _buildTextField(
+          _passwordController,
+          'Password',
+          Icons.lock,
+          isPassword: true,
+        ),
         const SizedBox(height: 16),
-        _buildTextField(_companyController, 'Add Company', Icons.business),
+        _buildTextField(
+          _companyController,
+          'Add Company',
+          Icons.business,
+        ),
         const SizedBox(height: 12),
         ElevatedButton(
           onPressed: _addCompany,
-          child:
-              const Text('Add Company', style: TextStyle(color: Colors.white)),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF44564A),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 12,
+            ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: const Text(
+            'Add Company',
+            style: TextStyle(
+              color: Colors.white,
             ),
           ),
         ),
@@ -272,7 +299,10 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
           onPressed: _registerUser,
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF44564A),
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 32,
+              vertical: 16,
+            ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -287,14 +317,23 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   }
 
   Widget _buildTextField(
-      TextEditingController controller, String label, IconData icon,
-      {bool isPassword = false, TextInputType? keyboardType}) {
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    bool isPassword = false,
+    TextInputType? keyboardType,
+  }) {
     return TextField(
       controller: controller,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-        prefixIcon: Icon(icon, color: const Color(0xFF44564A)),
+        labelStyle: const TextStyle(
+          fontWeight: FontWeight.bold,
+        ),
+        prefixIcon: Icon(
+          icon,
+          color: const Color(0xFF44564A),
+        ),
         filled: true,
         fillColor: Colors.grey[100],
         border: OutlineInputBorder(
@@ -303,10 +342,14 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.0),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: BorderSide(
+            color: Colors.grey.shade300,
+          ),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 20,
+        ),
       ),
       obscureText: isPassword,
       keyboardType: keyboardType,
@@ -317,15 +360,24 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     return Wrap(
       spacing: 8,
       children: _companies
-          .map((company) => Chip(
-                label: Text(company),
-                deleteIcon: const Icon(Icons.close, size: 16),
-                onDeleted: () {
-                  setState(() => _companies.remove(company));
-                },
-                backgroundColor: Colors.grey[200],
-                labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-              ))
+          .map(
+            (company) => Chip(
+              label: Text(company),
+              deleteIcon: const Icon(
+                Icons.close,
+                size: 16,
+              ),
+              onDeleted: () {
+                setState(
+                  () => _companies.remove(company),
+                );
+              },
+              backgroundColor: Colors.grey[200],
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          )
           .toList(),
     );
   }
@@ -336,35 +388,40 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
       children: [
         const Text(
           'Select Payment Methods',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8.0,
-          children: _availablePaymentMethods.map((method) {
-            final isSelected = _selectedPaymentMethods.contains(method);
-            return FilterChip(
-              label: Text(method),
-              selected: isSelected,
-              onSelected: (selected) {
-                setState(() {
-                  if (selected) {
-                    _selectedPaymentMethods.add(method);
-                  } else {
-                    _selectedPaymentMethods.remove(method);
-                  }
-                });
-              },
-              selectedColor: const Color(0xFF44564A),
-              labelStyle: Theme.of(context).textTheme.labelMedium!.copyWith(
-                    color: isSelected ? Colors.white : Colors.black,
-                  ),
-              backgroundColor: Colors.grey[200],
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            );
-          }).toList(),
+          children: _availablePaymentMethods.map(
+            (method) {
+              final isSelected = _selectedPaymentMethods.contains(method);
+              return FilterChip(
+                label: Text(method),
+                selected: isSelected,
+                onSelected: (selected) {
+                  setState(() {
+                    if (selected) {
+                      _selectedPaymentMethods.add(method);
+                    } else {
+                      _selectedPaymentMethods.remove(method);
+                    }
+                  });
+                },
+                selectedColor: const Color(0xFF44564A),
+                labelStyle: Theme.of(context).textTheme.labelMedium!.copyWith(
+                      color: isSelected ? Colors.white : Colors.black,
+                    ),
+                backgroundColor: Colors.grey[200],
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              );
+            },
+          ).toList(),
         ),
       ],
     );
@@ -375,8 +432,13 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
       value: _selectedRole,
       decoration: InputDecoration(
         labelText: 'Select Role',
-        labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-        prefixIcon: Icon(Icons.security, color: const Color(0xFF44564A)),
+        labelStyle: const TextStyle(
+          fontWeight: FontWeight.bold,
+        ),
+        prefixIcon: Icon(
+          Icons.security,
+          color: const Color(0xFF44564A),
+        ),
         filled: true,
         fillColor: Colors.grey[100],
         border: OutlineInputBorder(
@@ -385,13 +447,22 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.0),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: BorderSide(
+            color: Colors.grey.shade300,
+          ),
         ),
       ),
       items: ['user', 'admin']
-          .map((role) => DropdownMenuItem(value: role, child: Text(role)))
+          .map(
+            (role) => DropdownMenuItem(
+              value: role,
+              child: Text(role),
+            ),
+          )
           .toList(),
-      onChanged: (role) => setState(() => _selectedRole = role!),
+      onChanged: (role) => setState(
+        () => _selectedRole = role!,
+      ),
     );
   }
 }

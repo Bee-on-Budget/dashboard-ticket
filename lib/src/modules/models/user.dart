@@ -33,13 +33,13 @@ class User {
       phoneNumber: _getPhoneFromEmail(json["phoneNumber"]),
       paymentMethods: json["paymentMethods"] != null
           ? (json["paymentMethods"] as List<dynamic>)
-          .map((method) => PaymentMethods.fromString(method as String))
-          .whereType<PaymentMethods>()
-          .toList()
+              .map((method) => PaymentMethods.fromString(method as String))
+              .whereType<PaymentMethods>()
+              .toList()
           : [],
       createdAt: (json["createdAt"] as Timestamp?)?.toDate(),
       companies:
-      json["companies"] != null ? List<String>.from(json["companies"]) : [],
+          json["companies"] != null ? List<String>.from(json["companies"]) : [],
     );
   }
 

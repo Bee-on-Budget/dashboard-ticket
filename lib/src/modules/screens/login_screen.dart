@@ -2,13 +2,14 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../../service/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
@@ -28,18 +29,23 @@ class _LoginScreenState extends State<LoginScreen> {
       if (user != null) {
         final role = await AuthService().getRole(user.uid);
 
-        if (role == 'admin') {
-          Navigator.pushReplacementNamed(
-              context, '/merged'); // Admins go to CreateUser
-        } else {
-          Navigator.pushReplacementNamed(
-              context, '/home'); // Regular users go to Home
+        if (mounted) {
+          if (role == 'admin') {
+            Navigator.pushReplacementNamed(
+                context, '/merged'); // Admins go to CreateUser
+          } else {
+            Navigator.pushReplacementNamed(
+                context, '/home'); // Regular users go to Home
+          }
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Login failed. Please check your credentials.')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Login failed. Please check your credentials.'),
+            ),
+          );
+        }
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -55,19 +61,25 @@ class _LoginScreenState extends State<LoginScreen> {
     if (identifier.isNotEmpty) {
       if (isEmailSelected) {
         await AuthService().sendPasswordResetEmail(identifier); // Email reset
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Password reset email sent')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Password reset email sent'),
+            ),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Password reset for phone is not supported.')),
+            content: Text('Password reset for phone is not supported.'),
+          ),
         );
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Please enter your email or phone number')),
+          content: Text('Please enter your email or phone number'),
+        ),
       );
     }
   }
@@ -181,9 +193,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: _login,
-                        child: const Text('Login'),
                         style: ElevatedButton.styleFrom(
-                          foregroundColor: Colors.white, // Text color
+                          foregroundColor: Colors.white,
+                          // Text color
                           backgroundColor: Color(0XFF44564A),
                           padding: EdgeInsets.symmetric(vertical: 18),
                           textStyle: TextStyle(
@@ -193,17 +205,18 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           elevation: 5,
                         ),
+                        child: const Text('Login'),
                       ),
                     ),
                     Center(
                       child: TextButton(
                         onPressed: _forgotPassword,
-                        child: const Text('Forgot Password?'),
                         style: TextButton.styleFrom(
                           foregroundColor: Color(0XFF44564A),
                           textStyle: TextStyle(
                               fontSize: 16, fontWeight: FontWeight.bold),
                         ),
+                        child: const Text('Forgot Password?'),
                       ),
                     ),
                   ],

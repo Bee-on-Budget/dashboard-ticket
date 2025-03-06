@@ -6,15 +6,15 @@ class AuthService {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  static const List<String> validPaymentMethods = [
-    'Card',
-    'Account',
-    'Cash',
-    'PayPal',
-    'Google Pay',
-    'Apple Pay',
-    'Bank Transfer',
-  ];
+  // static const List<String> validPaymentMethods = [
+  //   'Card',
+  //   'Account',
+  //   'Cash',
+  //   'PayPal',
+  //   'Google Pay',
+  //   'Apple Pay',
+  //   'Bank Transfer',
+  // ];
 
   // Create a user with email and password
   Future<String?> createUserWithEmailAndPassword({

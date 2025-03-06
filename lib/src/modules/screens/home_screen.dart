@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_dashboard/src/config/enums/ticket_status.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   Future<Map<String, int>> _fetchStatistics() async {
     final snapshot =
@@ -12,12 +13,21 @@ class HomeScreen extends StatelessWidget {
     final tickets = snapshot.docs;
 
     int totalTickets = tickets.length;
-    int openTickets =
-        tickets.where((ticket) => ticket['status'] == 'Open').length;
-    int inProgressTickets =
-        tickets.where((ticket) => ticket['status'] == 'In Progress').length;
-    int closedTickets =
-        tickets.where((ticket) => ticket['status'] == 'Closed').length;
+    int openTickets = tickets
+        .where(
+          (ticket) => ticket['status'] == 'Open',
+        )
+        .length;
+    int inProgressTickets = tickets
+        .where(
+          (ticket) => ticket['status'] == 'In Progress',
+        )
+        .length;
+    int closedTickets = tickets
+        .where(
+          (ticket) => ticket['status'] == 'Closed',
+        )
+        .length;
 
     return {
       'total_tickets': totalTickets,
@@ -90,44 +100,68 @@ class HomeScreen extends StatelessWidget {
               future: _fetchStatistics(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
                 }
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
+                  return Center(
+                    child: Text('Error: ${snapshot.error}'),
+                  );
                 }
                 final stats = snapshot.data!;
                 return _buildStatisticsGrid(stats);
               },
             ),
             const SizedBox(height: 20),
-            const Text('Ticket Status Distribution',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text(
+              'Ticket Status Distribution',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 20),
             FutureBuilder<List<Map<String, dynamic>>>(
               future: _fetchTicketStatus(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
                 }
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
+                  return Center(
+                    child: Text('Error: ${snapshot.error}'),
+                  );
                 }
                 final statusData = snapshot.data!;
                 return _buildPieChart(statusData);
               },
             ),
             const SizedBox(height: 20),
-            const Text('Tickets Over Time',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text(
+              'Tickets Over Time',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 20),
             FutureBuilder<List<Map<String, dynamic>>>(
               future: _fetchTicketsOverTime(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
                 }
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
+                  return Center(
+                    child: Text(
+                      'Error: ${snapshot.error}',
+                    ),
+                  );
                 }
                 final ticketsOverTime = snapshot.data!;
                 return _buildLineChart(ticketsOverTime);
@@ -146,18 +180,34 @@ class HomeScreen extends StatelessWidget {
       crossAxisSpacing: 16.0,
       children: [
         _buildStatisticCard(
-            'Total Tickets', stats['total_tickets'].toString(), Colors.blue),
+          'Total Tickets',
+          stats['total_tickets'].toString(),
+          Colors.blue,
+        ),
         _buildStatisticCard(
-            'Open Tickets', stats['open_tickets'].toString(), Colors.orange),
+          'Open Tickets',
+          stats['open_tickets'].toString(),
+          Colors.orange,
+        ),
         _buildStatisticCard(
-            'In Progress', stats['in_progress'].toString(), Colors.purple),
+          'In Progress',
+          stats['in_progress'].toString(),
+          Colors.purple,
+        ),
         _buildStatisticCard(
-            'Closed Tickets', stats['closed_tickets'].toString(), Colors.green),
+          'Closed Tickets',
+          stats['closed_tickets'].toString(),
+          Colors.green,
+        ),
       ],
     );
   }
 
-  Widget _buildStatisticCard(String title, String value, Color color) {
+  Widget _buildStatisticCard(
+    String title,
+    String value,
+    Color color,
+  ) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
@@ -224,7 +274,10 @@ class HomeScreen extends StatelessWidget {
           titlesData: FlTitlesData(show: true),
           borderData: FlBorderData(
             show: true,
-            border: Border.all(color: const Color(0xff37434d), width: 1),
+            border: Border.all(
+              color: const Color(0xff37434d),
+              width: 1,
+            ),
           ),
           minX: 0,
           maxX: ticketsOverTime.length.toDouble() - 1,
@@ -237,7 +290,9 @@ class HomeScreen extends StatelessWidget {
             LineChartBarData(
               spots: ticketsOverTime.asMap().entries.map((entry) {
                 return FlSpot(
-                    entry.key.toDouble(), entry.value['count'].toDouble());
+                  entry.key.toDouble(),
+                  entry.value['count'].toDouble(),
+                );
               }).toList(),
               isCurved: true,
               color: Colors.blue,

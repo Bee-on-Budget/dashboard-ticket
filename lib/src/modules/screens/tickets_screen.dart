@@ -1,18 +1,23 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_dashboard/src/modules/models/ticket_file.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'dart:async';
 
-import '../../service/data_service.dart';
+import '../../config/enums/ticket_status.dart';
+import '../models/ticket_file.dart';
 import 'comment_screen.dart';
+import '../../service/data_service.dart';
 
 const Color primaryColor = Color(0xFF44564A);
 const Color backgroundColor = Color(0xFFF5F5F5);
 const Color cardColor = Colors.white;
-final TextStyle boldTextStyle =
-    TextStyle(fontWeight: FontWeight.bold, color: primaryColor);
+final TextStyle boldTextStyle = TextStyle(
+  fontWeight: FontWeight.bold,
+  color: primaryColor,
+);
 
 class TicketsScreen extends StatefulWidget {
   const TicketsScreen({super.key});
@@ -122,7 +127,10 @@ class _TicketsScreenState extends State<TicketsScreen> {
                   children: [
                     if (selectedTicketId != null)
                       IconButton(
-                        icon: const Icon(Icons.arrow_back, color: primaryColor),
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: primaryColor,
+                        ),
                         onPressed: () {
                           setState(() {
                             selectedTicketId = null;
@@ -176,8 +184,10 @@ class _TicketsScreenState extends State<TicketsScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 SizedBox(
-                  width:
-                      MediaQuery.of(context).size.width * 0.4, // Adjusted width
+                  width: max(
+                    MediaQuery.of(context).size.width * 0.4,
+                    300,
+                  ), // Adjusted width
                   child: TextField(
                     controller: searchController,
                     decoration: InputDecoration(
@@ -188,8 +198,13 @@ class _TicketsScreenState extends State<TicketsScreen> {
                       ),
                       filled: true,
                       fillColor: Colors.grey[200],
-                      prefixIcon: const Icon(Icons.search, color: primaryColor),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: primaryColor,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 0,
+                      ),
                     ),
                     onChanged: _onSearchChanged,
                   ),
@@ -213,7 +228,9 @@ class _TicketsScreenState extends State<TicketsScreen> {
                 child: Text(
                   '${DateFormat('MMM dd').format(selectedDateRange!.start)} - ${DateFormat('MMM dd').format(selectedDateRange!.end)}',
                   style: const TextStyle(
-                      color: primaryColor, fontSize: 12), // Smaller text
+                    color: primaryColor,
+                    fontSize: 12,
+                  ), // Smaller text
                 ),
               ),
           ],
@@ -231,7 +248,10 @@ class _TicketsScreenState extends State<TicketsScreen> {
       ),
       child: DropdownButton<String>(
         value: selectedFilter == 'status' ? selectedFilterValue : null,
-        hint: const Text('Status', style: TextStyle(color: primaryColor)),
+        hint: const Text(
+          'Status',
+          style: TextStyle(color: primaryColor),
+        ),
         icon: const Icon(Icons.arrow_drop_down, color: primaryColor),
         underline: const SizedBox(),
         onChanged: (String? newValue) {
@@ -243,7 +263,10 @@ class _TicketsScreenState extends State<TicketsScreen> {
         items: statusOptions.map<DropdownMenuItem<String>>((String value) {
           return DropdownMenuItem<String>(
             value: value,
-            child: Text(value, style: const TextStyle(color: primaryColor)),
+            child: Text(
+              value,
+              style: const TextStyle(color: primaryColor),
+            ),
           );
         }).toList(),
       ),
@@ -259,30 +282,30 @@ class _TicketsScreenState extends State<TicketsScreen> {
     });
   }
 
-  Widget _buildDateSelection() {
-    return Row(
-      children: [
-        IconButton(
-          icon: const Icon(Icons.calendar_today, color: primaryColor),
-          onPressed: () => _showDateRangePicker(context),
-        ),
-        if (selectedDateRange != null)
-          IconButton(
-            icon: const Icon(Icons.clear, color: primaryColor),
-            onPressed: () {
-              setState(() {
-                selectedDateRange = null;
-              });
-            },
-          ),
-        if (selectedDateRange != null)
-          Text(
-            '${DateFormat('MMM dd').format(selectedDateRange!.start)} - ${DateFormat('MMM dd').format(selectedDateRange!.end)}',
-            style: const TextStyle(color: primaryColor),
-          ),
-      ],
-    );
-  }
+  // Widget _buildDateSelection() {
+  //   return Row(
+  //     children: [
+  //       IconButton(
+  //         icon: const Icon(Icons.calendar_today, color: primaryColor),
+  //         onPressed: () => _showDateRangePicker(context),
+  //       ),
+  //       if (selectedDateRange != null)
+  //         IconButton(
+  //           icon: const Icon(Icons.clear, color: primaryColor),
+  //           onPressed: () {
+  //             setState(() {
+  //               selectedDateRange = null;
+  //             });
+  //           },
+  //         ),
+  //       if (selectedDateRange != null)
+  //         Text(
+  //           '${DateFormat('MMM dd').format(selectedDateRange!.start)} - ${DateFormat('MMM dd').format(selectedDateRange!.end)}',
+  //           style: const TextStyle(color: primaryColor),
+  //         ),
+  //     ],
+  //   );
+  // }
 
   Future<void> _showDateRangePicker(BuildContext context) async {
     final DateTimeRange? picked = await showDateRangePicker(
@@ -299,7 +322,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                 const ButtonThemeData(textTheme: ButtonTextTheme.primary),
           ),
           child: Dialog(
-            child: Container(
+            child: SizedBox(
               width: MediaQuery.of(context).size.width * 0.8,
               child: child,
             ),
@@ -339,7 +362,9 @@ class _TicketsScreenState extends State<TicketsScreen> {
         return title.contains(searchLower) ||
             description.contains(searchLower) ||
             publisherName.contains(searchLower) ||
-            companies.any((company) => company.contains(searchLower));
+            companies.any(
+              (company) => company.contains(searchLower),
+            );
       }).toList();
     }
 
@@ -431,12 +456,13 @@ class _TicketsScreenState extends State<TicketsScreen> {
                             child: Text('Unassigned'),
                           ),
                           ...admins.map<DropdownMenuItem<String>>(
-                              (Map<String, dynamic> admin) {
-                            return DropdownMenuItem<String>(
-                              value: admin['id'],
-                              child: Text(admin['name']),
-                            );
-                          }).toList(),
+                            (Map<String, dynamic> admin) {
+                              return DropdownMenuItem<String>(
+                                value: admin['id'],
+                                child: Text(admin['name']),
+                              );
+                            },
+                          ),
                         ],
                       ),
                     ],
@@ -479,7 +505,8 @@ class _TicketsScreenState extends State<TicketsScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Published by: ${users[selectedTicketData?['userId']] ?? 'Unknown'}',
+                'Published by: '
+                '${users[selectedTicketData?['userId']] ?? 'Unknown'}',
                 style: const TextStyle(fontSize: 16, color: Colors.grey),
               ),
               const SizedBox(height: 16),
@@ -494,18 +521,22 @@ class _TicketsScreenState extends State<TicketsScreen> {
                 onChanged: (String? newValue) {
                   _updateTicketStatus(selectedTicketId!, newValue!);
                 },
-                items:
-                    statusOptions.map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
+                items: statusOptions.map<DropdownMenuItem<String>>(
+                  (String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  },
+                ).toList(),
               ),
               const SizedBox(height: 24),
               const Text(
                 'Attachments:',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
               ...snapshot.data!.map((file) {
@@ -525,7 +556,9 @@ class _TicketsScreenState extends State<TicketsScreen> {
                             builder: (context) => CommentScreen(
                               ticketId: selectedTicketId!,
                               file: TicketFile.fromJson(
-                                  json: file, fileId: fileId),
+                                json: file,
+                                fileId: fileId,
+                              ),
                             ),
                           ),
                         );

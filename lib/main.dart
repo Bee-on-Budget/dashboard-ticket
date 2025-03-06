@@ -3,7 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_dashboard/src/config/themes/theme_config.dart';
 import 'firebase_options.dart';
-import 'src/modules/screens/MergedScreen.dart';
+import 'src/modules/screens/merged_screen.dart';
 import 'src/modules/screens/create_user_screen.dart';
 import 'src/modules/screens/tickets_screen.dart';
 import 'src/modules/screens/login_screen.dart';
@@ -17,6 +17,8 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -39,6 +41,8 @@ class MyApp extends StatelessWidget {
 }
 
 class AuthCheck extends StatelessWidget {
+  const AuthCheck({super.key});
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(

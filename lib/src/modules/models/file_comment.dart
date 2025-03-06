@@ -19,7 +19,7 @@ class FileComment {
       message: json['message'] ?? "",
       senderId: json["senderId"] ?? "Unknown Sender",
       createdAt:
-      (json["timestamp"] as Timestamp?)?.toDate() ?? SynchronizedTime.now(),
+          (json["timestamp"] as Timestamp?)?.toDate() ?? SynchronizedTime.now(),
     );
   }
 
