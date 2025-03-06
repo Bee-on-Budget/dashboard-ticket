@@ -1,19 +1,28 @@
 enum PaymentMethods {
+  card,
+  account,
+  cash,
   payPal,
+  googlePay,
   applePay,
-  transfer,
-  cash;
+  bankTransfer;
 
   static PaymentMethods? fromString(String value) {
     switch (value) {
-      case 'PayPal':
-        return PaymentMethods.payPal;
-      case 'ApplePay':
-        return PaymentMethods.applePay;
-      case 'Transfer':
-        return PaymentMethods.transfer;
+      case 'Card':
+        return PaymentMethods.card;
+      case 'Account':
+        return PaymentMethods.account;
       case 'Cash':
         return PaymentMethods.cash;
+      case 'PayPal':
+        return PaymentMethods.payPal;
+      case 'Google Pay':
+        return PaymentMethods.googlePay;
+      case 'Apple Pay':
+        return PaymentMethods.applePay;
+      case 'Bank Transfer':
+        return PaymentMethods.bankTransfer;
       default:
         return null;
     }
@@ -23,5 +32,4 @@ enum PaymentMethods {
   String toString() {
     return name[0].toUpperCase() + name.substring(1);
   }
-
 }
