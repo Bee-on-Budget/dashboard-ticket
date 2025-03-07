@@ -15,6 +15,14 @@ class DataService {
     });
   }
 
+  static Future<List<String>> getUserCompany(String userId) async {
+    return List<String>.from(
+      (await _firestore.collection('users').doc(userId).get())
+              .data()?['companies'] ??
+          [],
+    );
+  }
+
   static Stream<List<Ticket>> getAllTickets() {
     return _firestore.collection('tickets').snapshots().map((snapshot) {
       return snapshot.docs.map((doc) {

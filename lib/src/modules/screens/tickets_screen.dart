@@ -501,6 +501,65 @@ class _TicketsScreenState extends State<TicketsScreen> {
                 style: const TextStyle(fontSize: 16),
               ),
               const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.only(right: 8),
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => FutureBuilder<List<String>>(
+                        future: DataService.getUserCompany(selectedTicketData?['userId']),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
+                          bool isOtherText = false;
+                          String otherText = '';
+                          if (snapshot.hasError) {
+                            isOtherText = true;
+                            otherText = 'Something went wrong!';
+                          } else if (!snapshot.hasData) {
+                            isOtherText = true;
+                            otherText = 'No Companies Listed';
+                          } else if (snapshot.data!.isEmpty) {
+                            isOtherText = true;
+                            otherText = 'No Companies Listed';
+                          }
+                          return AlertDialog(
+                            title: Text('Companies'),
+                            content: !isOtherText
+                                ? Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    spacing: 10,
+                                    children: snapshot.data!
+                                        .map(
+                                          (company) => Text(company),
+                                        )
+                                        .toList(),
+                                  )
+                                : Text(otherText),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                },
+                                child: Text("Ok"),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    );
+                  },
+                  label: Text('Show Companies'),
+                  icon: Icon(Icons.business),
+                ),
+              ),
+              const SizedBox(height: 16),
               Text(
                 'Published by: '
                 '${users[selectedTicketData?['userId']] ?? 'Unknown'}',
