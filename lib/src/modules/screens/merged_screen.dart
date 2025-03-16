@@ -6,23 +6,30 @@ import 'home_screen.dart';
 import 'create_user_screen.dart';
 import 'tickets_screen.dart';
 import 'profile_screen.dart';
+// MergedScreen.dart
 
 class MergedScreen extends StatefulWidget {
   const MergedScreen({super.key});
 
   @override
-  State<MergedScreen> createState() => _MergedScreenState();
+  State<MergedScreen> createState() => MergedScreenState();
 }
 
-class _MergedScreenState extends State<MergedScreen> {
-  int _currentIndex = 3;
+class MergedScreenState extends State<MergedScreen> {
+  int _currentIndex = 3; // Private variable
+
+  // Public method to update _currentIndex
+  void updateCurrentIndex(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
 
   final List<Widget> _pages = [
     HomeScreen(),
     CreateUserScreen(),
     TicketsScreen(),
     ProfileScreen(),
-    // TestScreen(),
   ];
 
   @override
@@ -40,7 +47,7 @@ class _MergedScreenState extends State<MergedScreen> {
         backgroundColor: Color(0xFF44564A),
         elevation: 0,
         iconTheme: IconThemeData(
-          color: Colors.white, // Set the color of the icon here
+          color: Colors.white,
         ),
         actions: [
           IconButton(
@@ -49,11 +56,9 @@ class _MergedScreenState extends State<MergedScreen> {
               // Handle notification action
             },
           ),
-          // Logout Icon
           IconButton(
             icon: Icon(Icons.logout, color: Colors.white),
-            onPressed: _signOut // Logout immediately
-            ,
+            onPressed: _signOut,
           ),
         ],
       ),
@@ -72,10 +77,6 @@ class _MergedScreenState extends State<MergedScreen> {
               DrawerHeader(
                 decoration: BoxDecoration(
                   color: Color(0xFF44564A),
-                  // image: DecorationImage(
-                  //   image: AssetImage('assets/images/logo.jpg'),
-                  //   fit: BoxFit.cover,
-                  // ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,26 +105,42 @@ class _MergedScreenState extends State<MergedScreen> {
               _buildDrawerItem(Icons.person_add, 'Create User', 1),
               _buildDrawerItem(Icons.list, 'Tickets', 2),
               _buildDrawerItem(Icons.person, 'Profile', 3),
-              // _buildDrawerItem(Icons.settings, 'Test', 4),
               const Divider(color: Colors.white54),
               _buildDrawerItem(Icons.logout, 'Logout', 4, isLogout: true),
             ],
           ),
         ),
       ),
-      body: AnimatedSwitcher(
-        duration: Duration(milliseconds: 300),
-        child: _pages[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _pages,
       ),
-      // floatingActionButton: _currentIndex == 2
-      //     ? FloatingActionButton(
-      //         onPressed: () {
-      //           // Handle FAB action for TicketsScreen
-      //         },
-      //         backgroundColor: Color(0xFF44564A),
-      //         child: Icon(Icons.add, color: Colors.white),
-      //       )
-      // : null,
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_add),
+            label: 'Create User',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.list),
+            label: 'Tickets',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
+      ),
     );
   }
 

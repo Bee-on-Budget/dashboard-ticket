@@ -1,10 +1,10 @@
 import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
 import '../models/user.dart';
 import '../../service/data_service.dart';
+import 'merged_screen.dart';
+import 'tickets_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -17,6 +17,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late final TextEditingController _searchController;
   bool _isSearchUsers = true;
   String _searchText = '';
+  String? _expandedUserId; // Track which user is expanded
 
   @override
   void initState() {
@@ -41,7 +42,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          spacing: 30,
           children: [
             Card(
               elevation: 2,
@@ -52,7 +52,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  spacing: 20,
                   children: [
                     SizedBox(
                       width: max(MediaQuery.of(context).size.width * 0.4, 350),
@@ -72,9 +71,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Icons.search,
                             color: Color(0xFF44564A),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 0,
-                          ),
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 0),
                         ),
                       ),
                     ),
@@ -115,32 +113,77 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(15),
                       ),
-                      child: InkWell(
-                        onTap: () {
-                          showUserDetailsDialog(context, filteredUsers[idx]);
+                      child: ExpansionTile(
+                        key: Key(filteredUsers[idx].id),
+                        initiallyExpanded:
+                            filteredUsers[idx].id == _expandedUserId,
+                        onExpansionChanged: (isExpanded) {
+                          setState(() {
+                            _expandedUserId =
+                                isExpanded ? filteredUsers[idx].id : null;
+                          });
                         },
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                filteredUsers[idx].username,
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color:
-                                      Theme.of(context).colorScheme.secondary,
-                                ),
-                              ),
-                              Text(
-                                filteredUsers[idx].role.toString(),
-                                style: TextStyle(color: Colors.grey[600]),
-                              ),
-                            ],
+                        title: Text(
+                          filteredUsers[idx].username,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.secondary,
                           ),
                         ),
+                        subtitle: Text(
+                          filteredUsers[idx].role.toString(),
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildDetailRow(
+                                    'Email', filteredUsers[idx].email),
+                                _buildDetailRow('Phone Number',
+                                    filteredUsers[idx].phoneNumber),
+                                _buildDetailRow(
+                                  'Payment Methods',
+                                  filteredUsers[idx]
+                                      .paymentMethods
+                                      .map((pm) => pm.toString())
+                                      .join(', '),
+                                ),
+                                _buildDetailRow(
+                                  'Created At',
+                                  filteredUsers[idx].createdAt == null
+                                      ? 'No Date'
+                                      : DateFormat('yyyy MMM, dd').format(
+                                          filteredUsers[idx].createdAt!),
+                                ),
+                                _buildDetailRow(
+                                  'Companies',
+                                  filteredUsers[idx].companies.join(', '),
+                                ),
+                                SizedBox(height: 16),
+                                Center(
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      // Navigate to TicketsScreen with the userId
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => TicketsScreen(
+                                            userId: filteredUsers[idx].id,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: Text('View Tickets'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   );
@@ -149,6 +192,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$label: ',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          Expanded(
+            child: Text(value),
+          ),
+        ],
       ),
     );
   }
@@ -182,65 +243,5 @@ class _ProfileScreenState extends State<ProfileScreen> {
             .any((company) => company.toLowerCase().contains(_searchText));
       }
     }).toList();
-  }
-
-  void showUserDetailsDialog(BuildContext context, User user) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('User Details'),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildDetailRow('Username', user.username),
-                _buildDetailRow('Role', user.role.toString()),
-                _buildDetailRow('Email', user.email),
-                _buildDetailRow('Phone Number', user.phoneNumber),
-                _buildDetailRow(
-                  'Payment Methods',
-                  user.paymentMethods.join(', '),
-                ),
-                _buildDetailRow(
-                  'Created At',
-                  user.createdAt == null
-                      ? 'No Date'
-                      : DateFormat('yyyy MMM,dd').format(user.createdAt!),
-                ),
-                _buildDetailRow('Companies', user.companies.join(', ')),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Close'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$label: ',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          Expanded(
-            child: Text(value),
-          ),
-        ],
-      ),
-    );
   }
 }

@@ -4,7 +4,9 @@ import '../../config/enums/payment_methods.dart';
 import '../../config/enums/user_role.dart';
 
 class User {
-  final String userId;
+  final String id; // Document ID from Firestore
+  final String
+      userId; // User ID (could be the same as `id` or a separate field)
   final String username;
   final UserRole role;
   final String email;
@@ -14,6 +16,7 @@ class User {
   final List<String> companies;
 
   const User({
+    required this.id, // Add this to the constructor
     required this.userId,
     required this.username,
     required this.role,
@@ -24,9 +27,10 @@ class User {
     required this.companies,
   });
 
-  factory User.fromJson(Map<String, dynamic> json, String userId) {
+  factory User.fromJson(Map<String, dynamic> json, String id) {
     return User(
-      userId: userId,
+      id: id, // Use the `id` parameter passed to the factory constructor
+      userId: json["userId"] ?? id, // Use `id` if `userId` is not provided
       username: json["username"] ?? "No Username",
       role: UserRole.fromString(json["role"] ?? "unknown"),
       email: json["email"] ?? "No Email",

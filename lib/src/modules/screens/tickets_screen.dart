@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import '../../config/enums/ticket_status.dart';
 import '../models/ticket_file.dart';
 import 'comment_screen.dart';
@@ -19,8 +18,9 @@ final TextStyle boldTextStyle = TextStyle(
 );
 
 class TicketsScreen extends StatefulWidget {
-  const TicketsScreen({super.key});
+  final String? userId;
 
+  const TicketsScreen({super.key, this.userId});
   @override
   State<TicketsScreen> createState() => _TicketsScreenState();
 }
@@ -110,42 +110,26 @@ class _TicketsScreenState extends State<TicketsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundColor,
+      appBar: AppBar(
+        title: Text(
+          selectedTicketId == null ? 'Tickets' : 'Ticket Details',
+          style: boldTextStyle.copyWith(fontSize: 24),
+        ),
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back,
+            color: primaryColor,
+          ),
+          onPressed: () {
+            // Navigate back to the ProfileScreen
+            Navigator.pop(context);
+          },
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Indicate the current page (Tickets or Ticket Details)
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    if (selectedTicketId != null)
-                      IconButton(
-                        icon: const Icon(
-                          Icons.arrow_back,
-                          color: primaryColor,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            selectedTicketId = null;
-                            selectedTicketData = null;
-                          });
-                        },
-                      ),
-                    Text(
-                      selectedTicketId == null ? 'Tickets' : 'Ticket Details',
-                      style: boldTextStyle.copyWith(fontSize: 24),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
             if (selectedTicketId == null) _buildSearchAndFilterBar(),
             const SizedBox(height: 16),
             Expanded(
@@ -161,11 +145,11 @@ class _TicketsScreenState extends State<TicketsScreen> {
 
   void _clearAllFilters() {
     setState(() {
-      searchQuery = '';
-      searchController.clear();
-      selectedFilter = 'title';
-      selectedFilterValue = null;
-      selectedDateRange = null;
+      searchQuery = ''; // Reset search query
+      searchController.clear(); // Clear the search text field
+      selectedFilter = 'title'; // Reset filter to default
+      selectedFilterValue = null; // Clear selected filter value
+      selectedDateRange = null; // Clear selected date range
     });
   }
 
@@ -345,9 +329,15 @@ class _TicketsScreenState extends State<TicketsScreen> {
       };
     }).toList();
 
-    if (searchQuery.length >= 3) {
-      final searchLower = searchQuery.toLowerCase();
+    // Filter by user ID if provided
+    if (widget.userId != null) {
+      tickets =
+          tickets.where((ticket) => ticket['userId'] == widget.userId).toList();
+    }
 
+    // Filter by search query
+    if (searchQuery.isNotEmpty) {
+      final searchLower = searchQuery.toLowerCase();
       tickets = tickets.where((ticket) {
         final title = ticket['title']?.toLowerCase() ?? '';
         final description = ticket['description']?.toLowerCase() ?? '';
@@ -359,18 +349,18 @@ class _TicketsScreenState extends State<TicketsScreen> {
         return title.contains(searchLower) ||
             description.contains(searchLower) ||
             publisherName.contains(searchLower) ||
-            companies.any(
-              (company) => company.contains(searchLower),
-            );
+            companies.any((company) => company.contains(searchLower));
       }).toList();
     }
 
+    // Filter by status
     if (selectedFilter == 'status' && selectedFilterValue != null) {
       tickets = tickets.where((ticket) {
         return ticket['status'] == selectedFilterValue;
       }).toList();
     }
 
+    // Filter by date range
     if (selectedDateRange != null) {
       tickets = tickets.where((ticket) {
         final createdDate = (ticket['createdDate'] as Timestamp).toDate();
@@ -509,7 +499,8 @@ class _TicketsScreenState extends State<TicketsScreen> {
                     showDialog(
                       context: context,
                       builder: (context) => FutureBuilder<List<String>>(
-                        future: DataService.getUserCompany(selectedTicketData?['userId']),
+                        future: DataService.getUserCompany(
+                            selectedTicketData?['userId']),
                         builder: (context, snapshot) {
                           if (snapshot.connectionState ==
                               ConnectionState.waiting) {
