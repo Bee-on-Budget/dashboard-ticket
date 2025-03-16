@@ -12,6 +12,7 @@
     }
   },
   "hosting": {
+    "site": "sitedashboard",
     "source": ".",
     "ignore": [
       "firebase.json",
