@@ -16,6 +16,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _identifierController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool isEmailSelected = true; // Toggle between email and phone
+  bool _isPasswordVisible = false; // Track password visibility
 
   /// Login method
   void _login() async {
@@ -179,12 +180,24 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Password field
                     TextField(
                       controller: _passwordController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Password',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.lock),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _isPasswordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isPasswordVisible = !_isPasswordVisible;
+                            });
+                          },
+                        ),
                       ),
-                      obscureText: true,
+                      obscureText: !_isPasswordVisible, // Toggle visibility
                     ),
                     const SizedBox(height: 30),
 

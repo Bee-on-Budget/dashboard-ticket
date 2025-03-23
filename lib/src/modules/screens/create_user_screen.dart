@@ -14,7 +14,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _companyController = TextEditingController();
-
+  bool _isPasswordVisible = false; // Add this line
   bool _isEmailSelected = true;
   final List<String> _companies = [];
   final List<String> _selectedPaymentMethods = [];
@@ -350,8 +350,22 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
           vertical: 16,
           horizontal: 20,
         ),
+        // Add this suffixIcon for password fields
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(
+                  _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                  color: const Color(0xFF44564A),
+                ),
+                onPressed: () {
+                  setState(() {
+                    _isPasswordVisible = !_isPasswordVisible;
+                  });
+                },
+              )
+            : null,
       ),
-      obscureText: isPassword,
+      obscureText: isPassword && !_isPasswordVisible, // Toggle visibility
       keyboardType: keyboardType,
     );
   }
