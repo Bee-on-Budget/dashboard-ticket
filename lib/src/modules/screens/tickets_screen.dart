@@ -105,41 +105,57 @@ class _TicketsScreenState extends State<TicketsScreen> {
     super.dispose();
   }
 
+  Future<bool> _handleWillPop() async {
+    if (selectedTicketId != null) {
+      setState(() {
+        selectedTicketId = null;
+        selectedTicketData = null;
+      });
+      return false;
+    }
+    return true;
+  }
+
+  void _handleBackButton() {
+    if (selectedTicketId != null) {
+      setState(() {
+        selectedTicketId = null;
+        selectedTicketData = null;
+      });
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      appBar: AppBar(
-        title: Text(
-          selectedTicketId == null ? 'Tickets' : 'Ticket Details',
-          style: boldTextStyle.copyWith(fontSize: 24),
+    return WillPopScope(
+      onWillPop: _handleWillPop,
+      child: Scaffold(
+        backgroundColor: backgroundColor,
+        appBar: AppBar(
+          title: Text(
+            selectedTicketId == null ? 'Tickets' : 'Ticket Details',
+            style: boldTextStyle.copyWith(fontSize: 24),
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: primaryColor),
+            onPressed: _handleBackButton,
+          ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: primaryColor),
-          onPressed: () {
-            if (selectedTicketId != null) {
-              setState(() {
-                selectedTicketId = null;
-                selectedTicketData = null;
-              });
-            } else {
-              Navigator.pop(context);
-            }
-          },
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            if (selectedTicketId == null) _buildSearchAndFilterBar(),
-            const SizedBox(height: 16),
-            Expanded(
-              child: selectedTicketId == null
-                  ? _buildTicketList()
-                  : _buildTicketDetail(),
-            ),
-          ],
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              if (selectedTicketId == null) _buildSearchAndFilterBar(),
+              const SizedBox(height: 16),
+              Expanded(
+                child: selectedTicketId == null
+                    ? _buildTicketList()
+                    : _buildTicketDetail(),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -420,7 +436,8 @@ class _TicketsScreenState extends State<TicketsScreen> {
 
   Widget _buildAdminDropdown(String ticketId, String assignedAdminId) {
     // Ensure unique admin IDs
-    final uniqueAdminIds = admins.map((a) => a['id']).toSet().toList();
+    final uniqueAdminIds =
+        admins.map((a) => a['id'] as String).toSet().toList();
 
     return DropdownButton<String>(
       value: assignedAdminId.isNotEmpty ? assignedAdminId : null,
@@ -436,10 +453,10 @@ class _TicketsScreenState extends State<TicketsScreen> {
         ...uniqueAdminIds.map((adminId) {
           final admin = admins.firstWhere((a) => a['id'] == adminId);
           return DropdownMenuItem<String>(
-            value: admin['id'],
-            child: Text(admin['name']),
+            value: admin['id'] as String,
+            child: Text(admin['name'] as String),
           );
-        }),
+        }).toList(),
       ],
     );
   }

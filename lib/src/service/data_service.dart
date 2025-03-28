@@ -23,6 +23,23 @@ class DataService {
     );
   }
 
+  static Future<void> updateUser(User user) async {
+    try {
+      await _firestore.collection('users').doc(user.id).update({
+        'username': user.username,
+        'email': user.email,
+        'phoneNumber': user.phoneNumber,
+        // Add other fields you want to be updatable
+        'role': user.role.toString(),
+        'paymentMethods': user.paymentMethods.map((e) => e.toString()).toList(),
+        'companies': user.companies,
+        'isActive': user.isActive,
+      });
+    } catch (e) {
+      throw Exception('Failed to update user: $e');
+    }
+  }
+
   static Stream<List<Ticket>> getAllTickets() {
     return _firestore.collection('tickets').snapshots().map((snapshot) {
       return snapshot.docs.map((doc) {
