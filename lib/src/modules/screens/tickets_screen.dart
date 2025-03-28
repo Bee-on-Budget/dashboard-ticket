@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -116,13 +115,16 @@ class _TicketsScreenState extends State<TicketsScreen> {
           style: boldTextStyle.copyWith(fontSize: 24),
         ),
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back,
-            color: primaryColor,
-          ),
+          icon: const Icon(Icons.arrow_back, color: primaryColor),
           onPressed: () {
-            // Navigate back to the ProfileScreen
-            Navigator.pop(context);
+            if (selectedTicketId != null) {
+              setState(() {
+                selectedTicketId = null;
+                selectedTicketData = null;
+              });
+            } else {
+              Navigator.pop(context);
+            }
           },
         ),
       ),
@@ -143,16 +145,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
     );
   }
 
-  void _clearAllFilters() {
-    setState(() {
-      searchQuery = ''; // Reset search query
-      searchController.clear(); // Clear the search text field
-      selectedFilter = 'title'; // Reset filter to default
-      selectedFilterValue = null; // Clear selected filter value
-      selectedDateRange = null; // Clear selected date range
-    });
-  }
-
   Widget _buildSearchAndFilterBar() {
     return Card(
       elevation: 2,
@@ -167,7 +159,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 SizedBox(
-                  // Adjusted width
                   width: MediaQuery.of(context).size.width * 0.4,
                   child: TextField(
                     controller: searchController,
@@ -191,7 +182,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                _buildStatusDropdown(), // Status dropdown in the same line
+                _buildStatusDropdown(),
                 const SizedBox(width: 10),
                 IconButton(
                   icon: const Icon(Icons.calendar_today, color: primaryColor),
@@ -203,7 +194,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                 ),
               ],
             ),
-            if (selectedDateRange != null) // Display selected date range below
+            if (selectedDateRange != null)
               Padding(
                 padding: const EdgeInsets.only(top: 10),
                 child: Text(
@@ -211,7 +202,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                   style: const TextStyle(
                     color: primaryColor,
                     fontSize: 12,
-                  ), // Smaller text
+                  ),
                 ),
               ),
           ],
@@ -263,31 +254,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
     });
   }
 
-  // Widget _buildDateSelection() {
-  //   return Row(
-  //     children: [
-  //       IconButton(
-  //         icon: const Icon(Icons.calendar_today, color: primaryColor),
-  //         onPressed: () => _showDateRangePicker(context),
-  //       ),
-  //       if (selectedDateRange != null)
-  //         IconButton(
-  //           icon: const Icon(Icons.clear, color: primaryColor),
-  //           onPressed: () {
-  //             setState(() {
-  //               selectedDateRange = null;
-  //             });
-  //           },
-  //         ),
-  //       if (selectedDateRange != null)
-  //         Text(
-  //           '${DateFormat('MMM dd').format(selectedDateRange!.start)} - ${DateFormat('MMM dd').format(selectedDateRange!.end)}',
-  //           style: const TextStyle(color: primaryColor),
-  //         ),
-  //     ],
-  //   );
-  // }
-
   Future<void> _showDateRangePicker(BuildContext context) async {
     final DateTimeRange? picked = await showDateRangePicker(
       context: context,
@@ -317,6 +283,16 @@ class _TicketsScreenState extends State<TicketsScreen> {
         selectedDateRange = picked;
       });
     }
+  }
+
+  void _clearAllFilters() {
+    setState(() {
+      searchQuery = '';
+      searchController.clear();
+      selectedFilter = 'title';
+      selectedFilterValue = null;
+      selectedDateRange = null;
+    });
   }
 
   Stream<List<Map<String, dynamic>>> _getFilteredTicketsStream() async* {
@@ -430,28 +406,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                           ),
                         ],
                       ),
-                      DropdownButton<String>(
-                        value:
-                            assignedAdminId.isNotEmpty ? assignedAdminId : null,
-                        hint: const Text('Assign Admin'),
-                        onChanged: (String? newValue) {
-                          _assignAdminToTicket(ticket['id'], newValue);
-                        },
-                        items: [
-                          const DropdownMenuItem<String>(
-                            value: null, // Use null to represent unassigned
-                            child: Text('Unassigned'),
-                          ),
-                          ...admins.map<DropdownMenuItem<String>>(
-                            (Map<String, dynamic> admin) {
-                              return DropdownMenuItem<String>(
-                                value: admin['id'],
-                                child: Text(admin['name']),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
+                      _buildAdminDropdown(ticket['id'], assignedAdminId),
                     ],
                   ),
                 ),
@@ -460,6 +415,32 @@ class _TicketsScreenState extends State<TicketsScreen> {
           },
         );
       },
+    );
+  }
+
+  Widget _buildAdminDropdown(String ticketId, String assignedAdminId) {
+    // Ensure unique admin IDs
+    final uniqueAdminIds = admins.map((a) => a['id']).toSet().toList();
+
+    return DropdownButton<String>(
+      value: assignedAdminId.isNotEmpty ? assignedAdminId : null,
+      hint: const Text('Assign Admin'),
+      onChanged: (String? newValue) {
+        _assignAdminToTicket(ticketId, newValue);
+      },
+      items: [
+        const DropdownMenuItem<String>(
+          value: null,
+          child: Text('Unassigned'),
+        ),
+        ...uniqueAdminIds.map((adminId) {
+          final admin = admins.firstWhere((a) => a['id'] == adminId);
+          return DropdownMenuItem<String>(
+            value: admin['id'],
+            child: Text(admin['name']),
+          );
+        }),
+      ],
     );
   }
 
@@ -521,11 +502,10 @@ class _TicketsScreenState extends State<TicketsScreen> {
                             otherText = 'No Companies Listed';
                           }
                           return AlertDialog(
-                            title: Text('Companies'),
+                            title: const Text('Companies'),
                             content: !isOtherText
                                 ? Column(
                                     mainAxisSize: MainAxisSize.min,
-                                    spacing: 10,
                                     children: snapshot.data!
                                         .map(
                                           (company) => Text(company),
@@ -538,7 +518,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                                 onPressed: () {
                                   Navigator.pop(context);
                                 },
-                                child: Text("Ok"),
+                                child: const Text("Ok"),
                               ),
                             ],
                           );
@@ -546,8 +526,8 @@ class _TicketsScreenState extends State<TicketsScreen> {
                       ),
                     );
                   },
-                  label: Text('Show Companies'),
-                  icon: Icon(Icons.business),
+                  label: const Text('Show Companies'),
+                  icon: const Icon(Icons.business),
                 ),
               ),
               const SizedBox(height: 16),

@@ -14,9 +14,10 @@ class User {
   final List<PaymentMethods> paymentMethods;
   final DateTime? createdAt;
   final List<String> companies;
+  final bool isActive; // Add this field
 
   const User({
-    required this.id, // Add this to the constructor
+    required this.id,
     required this.userId,
     required this.username,
     required this.role,
@@ -25,6 +26,7 @@ class User {
     required this.paymentMethods,
     required this.createdAt,
     required this.companies,
+    this.isActive = true, // Default to true
   });
 
   factory User.fromJson(Map<String, dynamic> json, String id) {
@@ -33,7 +35,7 @@ class User {
       userId: json["userId"] ?? id, // Use `id` if `userId` is not provided
       username: json["username"] ?? "No Username",
       role: UserRole.fromString(json["role"] ?? "unknown"),
-      email: json["email"] ?? "No Email",
+      email: json["identifier"] ?? "No Email",
       phoneNumber: _getPhoneFromEmail(json["phoneNumber"]),
       paymentMethods: json["paymentMethods"] != null
           ? (json["paymentMethods"] as List<dynamic>)
@@ -44,6 +46,7 @@ class User {
       createdAt: (json["createdAt"] as Timestamp?)?.toDate(),
       companies:
           json["companies"] != null ? List<String>.from(json["companies"]) : [],
+      isActive: json["isActive"] ?? true, // Add this line
     );
   }
 
@@ -57,6 +60,7 @@ class User {
       'paymentMethods': paymentMethods.map((pm) => pm.toString()).toList(),
       'createdAt': createdAt,
       'companies': companies,
+      'isActive': isActive, // Add this line
     };
   }
 

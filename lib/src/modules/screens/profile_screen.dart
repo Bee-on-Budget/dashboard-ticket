@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/user.dart';
 import '../../service/data_service.dart';
+import 'UserDetailsScreen.dart';
 import 'merged_screen.dart';
 import 'tickets_screen.dart';
 
@@ -17,7 +18,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late final TextEditingController _searchController;
   bool _isSearchUsers = true;
   String _searchText = '';
-  String? _expandedUserId; // Track which user is expanded
+  String? _expandedUserId;
 
   @override
   void initState() {
@@ -164,21 +165,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   filteredUsers[idx].companies.join(', '),
                                 ),
                                 SizedBox(height: 16),
-                                Center(
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      // Navigate to TicketsScreen with the userId
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => TicketsScreen(
-                                            userId: filteredUsers[idx].id,
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => TicketsScreen(
+                                              userId: filteredUsers[idx].id,
+                                            ),
                                           ),
-                                        ),
-                                      );
-                                    },
-                                    child: Text('View Tickets'),
-                                  ),
+                                        );
+                                      },
+                                      child: Text('View Tickets'),
+                                    ),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.blue,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                AbsolutelyVisibleUserDetailsScreen(
+                                              userId: filteredUsers[idx].id,
+                                              username:
+                                                  filteredUsers[idx].username,
+                                              isActive:
+                                                  filteredUsers[idx].isActive,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      child: Text('Full Details'),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
@@ -223,7 +249,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _switchSearch() {
     setState(() {
       _isSearchUsers = !_isSearchUsers;
-      _searchText = ''; // Clear search text when switching modes
+      _searchText = '';
       _searchController.clear();
     });
   }
@@ -234,11 +260,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     return users.where((user) {
       if (_isSearchUsers) {
-        // Search by username or email for users
         return user.username.toLowerCase().contains(_searchText) ||
             user.email.toLowerCase().contains(_searchText);
       } else {
-        // Search by company names
         return user.companies
             .any((company) => company.toLowerCase().contains(_searchText));
       }

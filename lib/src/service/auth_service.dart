@@ -6,16 +6,6 @@ class AuthService {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // static const List<String> validPaymentMethods = [
-  //   'Card',
-  //   'Account',
-  //   'Cash',
-  //   'PayPal',
-  //   'Google Pay',
-  //   'Apple Pay',
-  //   'Bank Transfer',
-  // ];
-
   // Create a user with email and password
   Future<String?> createUserWithEmailAndPassword({
     required String email,
@@ -91,6 +81,7 @@ class AuthService {
           'companies': companies,
           'paymentMethods': paymentMethods,
           'role': role,
+          'isActive': true, // Ensure isActive is set to true by default
           'createdAt': FieldValue.serverTimestamp(),
         });
         debugPrint("User successfully saved to Firestore!");
@@ -102,7 +93,7 @@ class AuthService {
     }
   }
 
-  // Sign in with email and password and check user role
+  // Sign in with email and password and check user role and active status
   Future<User?> signInWithEmailAndPassword(
       String email, String password) async {
     try {
@@ -111,15 +102,19 @@ class AuthService {
         password: password,
       );
 
-      // Check user role
+      // Check user role and active status
       final user = userCredential.user;
       if (user != null) {
-        final role = await getRole(user.uid);
-        if (role == 'admin') {
-          return user; // Allow admin users to proceed
+        final userDoc =
+            await _firestore.collection('users').doc(user.uid).get();
+        final role = userDoc['role'] as String?;
+        final isActive = userDoc['isActive'] as bool? ?? true;
+
+        if (isActive) {
+          return user; // Allow active users to proceed
         } else {
-          debugPrint('Access denied: User is not an admin.');
-          return null; // Return null or handle it as needed for non-admin users
+          debugPrint('Access denied: User is inactive.');
+          return null; // Return null for inactive users
         }
       }
       return null;
@@ -129,7 +124,7 @@ class AuthService {
     }
   }
 
-  // Sign in with phone number and password and check user role
+  // Sign in with phone number and password and check user role and active status
   Future<User?> signInWithPhoneAndPassword(
       String phone, String password) async {
     try {
@@ -141,15 +136,19 @@ class AuthService {
         password: password,
       );
 
-      // Check user role
+      // Check user role and active status
       final user = userCredential.user;
       if (user != null) {
-        final role = await getRole(user.uid);
-        if (role == 'admin') {
-          return user; // Allow admin users to proceed
+        final userDoc =
+            await _firestore.collection('users').doc(user.uid).get();
+        final role = userDoc['role'] as String?;
+        final isActive = userDoc['isActive'] as bool? ?? true;
+
+        if (isActive) {
+          return user; // Allow active users to proceed
         } else {
-          debugPrint('Access denied: User is not an admin.');
-          return null; // Return null or handle it as needed for non-admin users
+          debugPrint('Access denied: User is inactive.');
+          return null; // Return null for inactive users
         }
       }
       return null;
@@ -168,6 +167,26 @@ class AuthService {
     } catch (e) {
       debugPrint('Error fetching user role: $e');
       return null;
+    }
+  }
+
+  // Deactivate a user
+  Future<void> deactivateUser(String uid) async {
+    try {
+      await _firestore.collection('users').doc(uid).update({'isActive': false});
+      debugPrint("User deactivated successfully!");
+    } catch (e) {
+      debugPrint('Error deactivating user: $e');
+    }
+  }
+
+  // Reactivate a user
+  Future<void> reactivateUser(String uid) async {
+    try {
+      await _firestore.collection('users').doc(uid).update({'isActive': true});
+      debugPrint("User reactivated successfully!");
+    } catch (e) {
+      debugPrint('Error reactivating user: $e');
     }
   }
 

@@ -1,112 +1,330 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-import '../models/user.dart';
-import 'tickets_screen.dart';
+class AbsolutelyVisibleUserDetailsScreen extends StatefulWidget {
+  final String userId;
+  final String username;
+  final bool isActive;
 
-class UserDetailsScreen extends StatelessWidget {
-  final User user;
+  const AbsolutelyVisibleUserDetailsScreen({
+    super.key,
+    required this.userId,
+    required this.username,
+    required this.isActive,
+  });
 
-  const UserDetailsScreen({super.key, required this.user});
+  @override
+  State<AbsolutelyVisibleUserDetailsScreen> createState() =>
+      _AbsolutelyVisibleUserDetailsScreenState();
+}
+
+class _AbsolutelyVisibleUserDetailsScreenState
+    extends State<AbsolutelyVisibleUserDetailsScreen> {
+  late bool _currentStatus;
+  List<String> userCompanies = [];
+  bool isLoadingCompanies = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentStatus = widget.isActive;
+    _loadUserCompanies();
+  }
+
+  Future<void> _loadUserCompanies() async {
+    setState(() => isLoadingCompanies = true);
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        final companies = data['companies'] as List<dynamic>? ?? [];
+        setState(() {
+          userCompanies = companies.map((e) => e.toString()).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading companies: $e');
+    } finally {
+      setState(() => isLoadingCompanies = false);
+    }
+  }
+
+  Future<void> _showCompanyDeactivateDialog(BuildContext context) async {
+    if (userCompanies.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User has no companies associated')),
+      );
+      return;
+    }
+
+    String? selectedCompany = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Company to Deactivate'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: userCompanies.length,
+            itemBuilder: (context, index) {
+              final company = userCompanies[index];
+              return ListTile(
+                title: Text(company),
+                onTap: () => Navigator.pop(context, company),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (selectedCompany != null) {
+      await _deactivateCompanyUsers(selectedCompany, context);
+    }
+  }
+
+  Future<void> _deactivateCompanyUsers(
+      String company, BuildContext context) async {
+    try {
+      final usersSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('companies', arrayContains: company)
+          .get();
+
+      final batch = FirebaseFirestore.instance.batch();
+
+      for (final doc in usersSnapshot.docs) {
+        batch.update(doc.reference, {'isActive': false});
+      }
+
+      await batch.commit();
+
+      if (userCompanies.contains(company)) {
+        setState(() => _currentStatus = false);
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Deactivated all users of $company'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('User Details'),
+        title: const Text('User Details'),
+        backgroundColor: Colors.blue,
+        elevation: 2,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Card(
               elevation: 2,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      user.username,
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                    CircleAvatar(
+                      radius: 48,
+                      backgroundColor: Colors.blue[50],
+                      child: Text(
+                        widget.username.substring(0, 1).toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
+                        ),
                       ),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 16),
                     Text(
-                      'Role: ${user.role}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
+                      widget.username,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
-                      'Email: ${user.email}',
+                      _currentStatus ? 'Active account' : 'Inactive account',
                       style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
+                        fontSize: 14,
+                        color: _currentStatus ? Colors.green : Colors.grey,
                       ),
                     ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Phone Number: ${user.phoneNumber}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
+                    if (isLoadingCompanies)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8),
+                        child: CircularProgressIndicator(),
                       ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Payment Methods: ${user.paymentMethods.join(', ')}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
+                    if (userCompanies.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Associated Companies:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Created At: ${user.createdAt == null ? 'No Date' : DateFormat('yyyy MMM, dd').format(user.createdAt!)}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Companies: ${user.companies.join(', ')}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
-                    ),
+                      ...userCompanies.map((company) => Text(company)).toList(),
+                    ],
                   ],
                 ),
               ),
             ),
-            SizedBox(height: 16),
-            Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  // Navigate to the tickets screen with the user's ID
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => TicketsScreen(userId: user.id),
+
+            const SizedBox(height: 32),
+
+            // Action Buttons Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // View Tickets Button
+                SizedBox(
+                  width: 140,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      debugPrint('View tickets pressed');
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: const BorderSide(color: Colors.blue),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                  );
-                },
-                child: Text('View Tickets'),
+                    child: const Text(
+                      'View Tickets',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 16),
+
+                // Deactivate Company Button - Now always visible
+                SizedBox(
+                  width: 140,
+                  child: ElevatedButton(
+                    onPressed: () => _showCompanyDeactivateDialog(context),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Deactivate Co.',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 16),
+
+                // Status Toggle Button
+                SizedBox(
+                  width: 140,
+                  child: ElevatedButton(
+                    onPressed: () => _toggleStatus(context),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      backgroundColor:
+                          _currentStatus ? Colors.red : Colors.green,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      _currentStatus ? 'Deactivate' : 'Activate',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // Back Button
+            SizedBox(
+              width: 200,
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text(
+                  'Back to List',
+                  style: TextStyle(fontSize: 14),
+                ),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _toggleStatus(BuildContext context) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .update({'isActive': !_currentStatus});
+
+      setState(() {
+        _currentStatus = !_currentStatus;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text(!_currentStatus ? 'User deactivated' : 'User activated'),
+          backgroundColor: !_currentStatus ? Colors.red : Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
