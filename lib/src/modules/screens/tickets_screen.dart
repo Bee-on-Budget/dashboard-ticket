@@ -435,12 +435,25 @@ class _TicketsScreenState extends State<TicketsScreen> {
   }
 
   Widget _buildAdminDropdown(String ticketId, String assignedAdminId) {
-    // Ensure unique admin IDs
-    final uniqueAdminIds =
-        admins.map((a) => a['id'] as String).toSet().toList();
+    final uniqueAdmins = admins
+        .fold<Map<String, Map<String, dynamic>>>(
+          {},
+          (map, admin) {
+            if (!map.containsKey(admin['id'])) {
+              map[admin['id']] = admin;
+            }
+            return map;
+          },
+        )
+        .values
+        .toList();
+
+    // Check if the assignedAdminId exists in our unique admins
+    final validAssignedAdmin =
+        uniqueAdmins.any((admin) => admin['id'] == assignedAdminId);
 
     return DropdownButton<String>(
-      value: assignedAdminId.isNotEmpty ? assignedAdminId : null,
+      value: validAssignedAdmin ? assignedAdminId : null,
       hint: const Text('Assign Admin'),
       onChanged: (String? newValue) {
         _assignAdminToTicket(ticketId, newValue);
@@ -450,8 +463,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
           value: null,
           child: Text('Unassigned'),
         ),
-        ...uniqueAdminIds.map((adminId) {
-          final admin = admins.firstWhere((a) => a['id'] == adminId);
+        ...uniqueAdmins.map((admin) {
           return DropdownMenuItem<String>(
             value: admin['id'] as String,
             child: Text(admin['name'] as String),
