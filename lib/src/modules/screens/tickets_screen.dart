@@ -36,7 +36,13 @@ class _TicketsScreenState extends State<TicketsScreen> {
   String searchQuery = '';
   String selectedFilter = 'title';
   DateTimeRange? selectedDateRange;
-  List<String> statusOptions = ['Open', 'In Progress', 'Closed'];
+  List<String> statusOptions = [
+    'Open',
+    'In Progress',
+    'Closed',
+    'Canceled',
+    'Need Re-work'
+  ];
   Timer? _debounce;
 
   @override
