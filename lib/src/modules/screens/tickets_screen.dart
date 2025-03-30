@@ -26,6 +26,7 @@ class TicketsScreen extends StatefulWidget {
 
 class _TicketsScreenState extends State<TicketsScreen> {
   final TextEditingController searchController = TextEditingController();
+  final TextEditingController referenceController = TextEditingController();
   String? selectedTicketId;
   Map<String, dynamic>? selectedTicketData;
   String? selectedFilterValue;
@@ -50,6 +51,14 @@ class _TicketsScreenState extends State<TicketsScreen> {
     super.initState();
     _fetchAdmins();
     _fetchUsers();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    searchController.dispose();
+    referenceController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchAdmins() async {
@@ -101,13 +110,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
-  }
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    searchController.dispose();
-    super.dispose();
   }
 
   Future<bool> _handleWillPop() async {
@@ -342,11 +344,13 @@ class _TicketsScreenState extends State<TicketsScreen> {
         final publisherName = users[publisherId]?.toLowerCase() ?? '';
         final companies =
             userCompanies[publisherId]?.map((e) => e.toLowerCase()) ?? [];
+        final reference = ticket['reference']?.toLowerCase() ?? '';
 
         return title.contains(searchLower) ||
             description.contains(searchLower) ||
             publisherName.contains(searchLower) ||
-            companies.any((company) => company.contains(searchLower));
+            companies.any((company) => company.contains(searchLower)) ||
+            reference.contains(searchLower);
       }).toList();
     }
 
@@ -403,6 +407,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                   setState(() {
                     selectedTicketId = ticket['id'];
                     selectedTicketData = ticket;
+                    referenceController.text = ticket['reference'] ?? '';
                   });
                 },
                 child: Padding(
@@ -410,32 +415,45 @@ class _TicketsScreenState extends State<TicketsScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            ticket['title'] ?? 'No Title',
-                            style: boldTextStyle.copyWith(fontSize: 18),
-                          ),
-                          Text(
-                            'Published by: $publisherName',
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
-                          if (companyName.isNotEmpty)
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Text(
-                              'Company: $companyName',
+                              ticket['title'] ?? 'No Title',
+                              style: boldTextStyle.copyWith(fontSize: 18),
+                            ),
+                            if (ticket['reference']?.isNotEmpty == true)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  'Reference: ${ticket['reference']}',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            Text(
+                              'Published by: $publisherName',
                               style: TextStyle(color: Colors.grey[600]),
                             ),
-                          Text(
-                            'Status: ${ticket['status'] ?? 'No Status'}',
-                            style: TextStyle(
-                              color: TicketStatus.fromString(
-                                ticket['status'],
-                              ).getColor(),
-                              fontWeight: FontWeight.bold,
+                            if (companyName.isNotEmpty)
+                              Text(
+                                'Company: $companyName',
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                            Text(
+                              'Status: ${ticket['status'] ?? 'No Status'}',
+                              style: TextStyle(
+                                color: TicketStatus.fromString(
+                                  ticket['status'],
+                                ).getColor(),
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       _buildAdminDropdown(ticket['id'], assignedAdminId),
                     ],
@@ -503,9 +521,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('No attachments available'));
-        }
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -520,6 +535,26 @@ class _TicketsScreenState extends State<TicketsScreen> {
               Text(
                 selectedTicketData?['description'] ?? 'No Description',
                 style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: referenceController,
+                decoration: InputDecoration(
+                  labelText: 'Reference',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.save),
+                    onPressed: () {
+                      _saveReference(
+                          selectedTicketId!, referenceController.text);
+                    },
+                  ),
+                ),
+                onSubmitted: (value) {
+                  _saveReference(selectedTicketId!, value);
+                },
               ),
               const SizedBox(height: 16),
               Container(
@@ -616,42 +651,45 @@ class _TicketsScreenState extends State<TicketsScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              ...snapshot.data!.map((file) {
-                return Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: ListTile(
-                    title: Text(file['fileName'] ?? 'Unknown File'),
-                    onTap: () {
-                      final fileId = file['fileId'];
-                      if (fileId != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => CommentScreen(
-                              ticketId: selectedTicketId!,
-                              file: TicketFile.fromJson(
-                                json: file,
-                                fileId: fileId,
+              if (snapshot.hasData && snapshot.data!.isNotEmpty)
+                ...snapshot.data!.map((file) {
+                  return Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: ListTile(
+                      title: Text(file['fileName'] ?? 'Unknown File'),
+                      onTap: () {
+                        final fileId = file['fileId'];
+                        if (fileId != null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CommentScreen(
+                                ticketId: selectedTicketId!,
+                                file: TicketFile.fromJson(
+                                  json: file,
+                                  fileId: fileId,
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      } else {
-                        debugPrint('File ID is null');
-                      }
-                    },
-                    trailing: IconButton(
-                      icon: const Icon(Icons.download, color: primaryColor),
-                      onPressed: () {
-                        _downloadFile(file['url']!);
+                          );
+                        } else {
+                          debugPrint('File ID is null');
+                        }
                       },
+                      trailing: IconButton(
+                        icon: const Icon(Icons.download, color: primaryColor),
+                        onPressed: () {
+                          _downloadFile(file['url']!);
+                        },
+                      ),
                     ),
-                  ),
-                );
-              }),
+                  );
+                }),
+              if (!snapshot.hasData || snapshot.data!.isEmpty)
+                const Center(child: Text('No attachments available')),
             ],
           ),
         );
@@ -685,6 +723,22 @@ class _TicketsScreenState extends State<TicketsScreen> {
       _showSnackBar('Status updated successfully');
     }).catchError((error) {
       _showSnackBar('Failed to update status: $error');
+    });
+  }
+
+  void _saveReference(String ticketId, String reference) {
+    FirebaseFirestore.instance
+        .collection('tickets')
+        .doc(ticketId)
+        .update({'reference': reference}).then((_) {
+      setState(() {
+        if (selectedTicketData != null) {
+          selectedTicketData!['reference'] = reference;
+        }
+      });
+      _showSnackBar('Reference saved successfully');
+    }).catchError((error) {
+      _showSnackBar('Failed to save reference: $error');
     });
   }
 
