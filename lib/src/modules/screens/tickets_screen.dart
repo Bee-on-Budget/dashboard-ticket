@@ -50,8 +50,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
     try {
       final adminSnapshot = await FirebaseFirestore.instance
           .collection('users')
-          .where('role', isEqualTo: 'admin')
-          .get();
+          .where('role', whereIn: ['admin', 'Admin']).get();
 
       if (mounted) {
         setState(() {
@@ -380,6 +379,11 @@ class _TicketsScreenState extends State<TicketsScreen> {
             final ticket = snapshot.data![index];
             String assignedAdminId = ticket['assignedAdminId'] ?? '';
             String publisherName = users[ticket['userId']] ?? 'Unknown';
+            // Get the first company name for this user (or empty string if none)
+            String companyName =
+                userCompanies[ticket['userId']]?.isNotEmpty == true
+                    ? userCompanies[ticket['userId']]!.first
+                    : '';
 
             return Card(
               elevation: 2,
@@ -411,6 +415,11 @@ class _TicketsScreenState extends State<TicketsScreen> {
                             'Published by: $publisherName',
                             style: TextStyle(color: Colors.grey[600]),
                           ),
+                          if (companyName.isNotEmpty)
+                            Text(
+                              'Company: $companyName',
+                              style: TextStyle(color: Colors.grey[600]),
+                            ),
                           Text(
                             'Status: ${ticket['status'] ?? 'No Status'}',
                             style: TextStyle(
@@ -435,12 +444,18 @@ class _TicketsScreenState extends State<TicketsScreen> {
   }
 
   Widget _buildAdminDropdown(String ticketId, String assignedAdminId) {
+    if (admins.isEmpty) {
+      return const Text('No admins available');
+    }
+
+    // Create a list of unique admins (by ID)
     final uniqueAdmins = admins
         .fold<Map<String, Map<String, dynamic>>>(
           {},
           (map, admin) {
-            if (!map.containsKey(admin['id'])) {
-              map[admin['id']] = admin;
+            final id = admin['id'] as String;
+            if (!map.containsKey(id)) {
+              map[id] = admin;
             }
             return map;
           },
@@ -448,12 +463,12 @@ class _TicketsScreenState extends State<TicketsScreen> {
         .values
         .toList();
 
-    // Check if the assignedAdminId exists in our unique admins
-    final validAssignedAdmin =
+    // Check if the current assignedAdminId exists in our unique admins
+    final isValidAssignedAdmin =
         uniqueAdmins.any((admin) => admin['id'] == assignedAdminId);
 
     return DropdownButton<String>(
-      value: validAssignedAdmin ? assignedAdminId : null,
+      value: isValidAssignedAdmin ? assignedAdminId : null,
       hint: const Text('Assign Admin'),
       onChanged: (String? newValue) {
         _assignAdminToTicket(ticketId, newValue);
