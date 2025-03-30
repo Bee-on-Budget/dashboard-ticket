@@ -14,19 +14,13 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _companyController = TextEditingController();
-  bool _isPasswordVisible = false; // Add this line
+  final TextEditingController _paymentMethodController =
+      TextEditingController();
+  bool _isPasswordVisible = false;
   bool _isEmailSelected = true;
   final List<String> _companies = [];
-  final List<String> _selectedPaymentMethods = [];
+  final List<String> _paymentMethods = [];
   String _selectedRole = 'user';
-
-  final List<String> _availablePaymentMethods = [
-    'Card',
-    'Account',
-    'Cash',
-    'PayPal',
-    'Bank Transfer',
-  ];
 
   Future<void> _registerUser() async {
     final username = _usernameController.text.trim();
@@ -35,9 +29,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
         ? _emailController.text.trim()
         : _phoneController.text.trim();
 
-    if (username.isEmpty ||
-        _companies.isEmpty ||
-        _selectedPaymentMethods.isEmpty) {
+    if (username.isEmpty || _companies.isEmpty || _paymentMethods.isEmpty) {
       _showSnackBar('Please fill all fields');
       return;
     }
@@ -50,7 +42,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
             password: password,
             username: username,
             companies: _companies,
-            paymentMethods: _selectedPaymentMethods,
+            paymentMethods: _paymentMethods,
             role: _selectedRole,
           )
         : await AuthService().createUserWithPhoneAndPassword(
@@ -58,7 +50,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
             password: password,
             username: username,
             companies: _companies,
-            paymentMethods: _selectedPaymentMethods,
+            paymentMethods: _paymentMethods,
             role: _selectedRole,
           );
 
@@ -87,9 +79,10 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     _passwordController.clear();
     _phoneController.clear();
     _companyController.clear();
+    _paymentMethodController.clear();
     setState(() {
       _companies.clear();
-      _selectedPaymentMethods.clear();
+      _paymentMethods.clear();
       _selectedRole = 'user'; // Reset to default role
     });
   }
@@ -119,6 +112,16 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
       setState(() {
         _companies.add(company);
         _companyController.clear();
+      });
+    }
+  }
+
+  void _addPaymentMethod() {
+    final method = _paymentMethodController.text.trim();
+    if (method.isNotEmpty) {
+      setState(() {
+        _paymentMethods.add(method);
+        _paymentMethodController.clear();
       });
     }
   }
@@ -170,7 +173,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withValues(alpha: 0.2),
+                  color: Colors.grey.withOpacity(0.2),
                   spreadRadius: 5,
                   blurRadius: 10,
                   offset: const Offset(0, 3),
@@ -291,7 +294,33 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
         const SizedBox(height: 12),
         _buildCompanyChips(),
         const SizedBox(height: 24),
-        _buildPaymentMethodMultiSelect(),
+        _buildTextField(
+          _paymentMethodController,
+          'Add Payment Method',
+          Icons.payment,
+        ),
+        const SizedBox(height: 12),
+        ElevatedButton(
+          onPressed: _addPaymentMethod,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF44564A),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 12,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: const Text(
+            'Add Payment Method',
+            style: TextStyle(
+              color: Colors.white,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildPaymentMethodChips(),
         const SizedBox(height: 24),
         _buildRoleDropdown(),
         const SizedBox(height: 24),
@@ -350,7 +379,6 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
           vertical: 16,
           horizontal: 20,
         ),
-        // Add this suffixIcon for password fields
         suffixIcon: isPassword
             ? IconButton(
                 icon: Icon(
@@ -365,7 +393,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
               )
             : null,
       ),
-      obscureText: isPassword && !_isPasswordVisible, // Toggle visibility
+      obscureText: isPassword && !_isPasswordVisible,
       keyboardType: keyboardType,
     );
   }
@@ -396,48 +424,29 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     );
   }
 
-  Widget _buildPaymentMethodMultiSelect() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Select Payment Methods',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8.0,
-          children: _availablePaymentMethods.map(
-            (method) {
-              final isSelected = _selectedPaymentMethods.contains(method);
-              return FilterChip(
-                label: Text(method),
-                selected: isSelected,
-                onSelected: (selected) {
-                  setState(() {
-                    if (selected) {
-                      _selectedPaymentMethods.add(method);
-                    } else {
-                      _selectedPaymentMethods.remove(method);
-                    }
-                  });
-                },
-                selectedColor: const Color(0xFF44564A),
-                labelStyle: Theme.of(context).textTheme.labelMedium!.copyWith(
-                      color: isSelected ? Colors.white : Colors.black,
-                    ),
-                backgroundColor: Colors.grey[200],
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              );
-            },
-          ).toList(),
-        ),
-      ],
+  Widget _buildPaymentMethodChips() {
+    return Wrap(
+      spacing: 8,
+      children: _paymentMethods
+          .map(
+            (method) => Chip(
+              label: Text(method),
+              deleteIcon: const Icon(
+                Icons.close,
+                size: 16,
+              ),
+              onDeleted: () {
+                setState(
+                  () => _paymentMethods.remove(method),
+                );
+              },
+              backgroundColor: Colors.grey[200],
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 
