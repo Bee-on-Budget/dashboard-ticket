@@ -20,6 +20,7 @@ class TicketsScreen extends StatefulWidget {
   final String? userId;
 
   const TicketsScreen({super.key, this.userId});
+
   @override
   State<TicketsScreen> createState() => _TicketsScreenState();
 }
@@ -145,10 +146,12 @@ class _TicketsScreenState extends State<TicketsScreen> {
             selectedTicketId == null ? 'Tickets' : 'Ticket Details',
             style: boldTextStyle.copyWith(fontSize: 24),
           ),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: primaryColor),
-            onPressed: _handleBackButton,
-          ),
+          leading: selectedTicketId == null
+              ? null
+              : IconButton(
+                  icon: const Icon(Icons.arrow_back, color: primaryColor),
+                  onPressed: _handleBackButton,
+                ),
         ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -186,7 +189,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                   child: TextField(
                     controller: searchController,
                     decoration: InputDecoration(
-                      hintText: 'Search tickets...',
+                      hintText: 'Search Tickets..',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: BorderSide.none,
@@ -319,12 +322,13 @@ class _TicketsScreenState extends State<TicketsScreen> {
   }
 
   Stream<List<Map<String, dynamic>>> _getFilteredTicketsStream() async* {
-    final snapshot =
+    final ticketsSnapshot =
         await FirebaseFirestore.instance.collection('tickets').get();
-    List<Map<String, dynamic>> tickets = snapshot.docs.map((doc) {
+    List<Map<String, dynamic>> tickets = ticketsSnapshot.docs.map((doc) {
       return {
         ...doc.data(),
         'id': doc.id,
+        'fileRefIds': <String>[],
       };
     }).toList();
 
@@ -334,6 +338,19 @@ class _TicketsScreenState extends State<TicketsScreen> {
           tickets.where((ticket) => ticket['userId'] == widget.userId).toList();
     }
 
+    // Add files reference ids to the tickets
+    for (int i = 0; i < tickets.length; ++i) {
+      final fileSnapshot = await FirebaseFirestore.instance
+          .collection('tickets')
+          .doc(tickets[i]['id'])
+          .collection('files')
+          .get();
+      final List<String> fileRefIds = fileSnapshot.docs
+          .map((doc) => (doc.data()['ref_id'] ?? '').toString())
+          .toList();
+      tickets[i]['fileRefIds'] = fileRefIds;
+    }
+
     // Filter by search query
     if (searchQuery.isNotEmpty) {
       final searchLower = searchQuery.toLowerCase();
@@ -341,7 +358,12 @@ class _TicketsScreenState extends State<TicketsScreen> {
         final title = ticket['title']?.toLowerCase() ?? '';
         final description = ticket['description']?.toLowerCase() ?? '';
         final publisherId = ticket['userId'] ?? '';
+        final ticketReference = ticket['reference'] ?? '';
+        final refId = ticket['ref_id'] ?? '';
         final publisherName = users[publisherId]?.toLowerCase() ?? '';
+        final List<String> fileRefIds =
+            (ticket['fileRefIds'] ?? '0000000000' as List<dynamic>)
+                .cast<String>();
         final companies =
             userCompanies[publisherId]?.map((e) => e.toLowerCase()) ?? [];
         final reference = ticket['reference']?.toLowerCase() ?? '';
@@ -349,6 +371,10 @@ class _TicketsScreenState extends State<TicketsScreen> {
         return title.contains(searchLower) ||
             description.contains(searchLower) ||
             publisherName.contains(searchLower) ||
+            ticketReference.contains(searchLower) ||
+            refId.contains(searchLower) ||
+            fileRefIds.any(
+                (String refId) => refId.toLowerCase().contains(searchLower)) ||
             companies.any((company) => company.contains(searchLower)) ||
             reference.contains(searchLower);
       }).toList();
