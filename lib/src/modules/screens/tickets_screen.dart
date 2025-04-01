@@ -322,80 +322,93 @@ class _TicketsScreenState extends State<TicketsScreen> {
   }
 
   Stream<List<Map<String, dynamic>>> _getFilteredTicketsStream() async* {
-    final ticketsSnapshot =
-        await FirebaseFirestore.instance.collection('tickets').get();
-    List<Map<String, dynamic>> tickets = ticketsSnapshot.docs.map((doc) {
+    // Base query construction
+    Query query = FirebaseFirestore.instance.collection('tickets');
+
+    // Server-side filters
+    if (widget.userId != null) {
+      query = query.where('userId', isEqualTo: widget.userId);
+    }
+    if (selectedFilter == 'status' && selectedFilterValue != null) {
+      query = query.where('status', isEqualTo: selectedFilterValue);
+    }
+    if (selectedDateRange != null) {
+      query = query
+          .where('createdDate', isGreaterThan: selectedDateRange!.start)
+          .where('createdDate', isLessThan: selectedDateRange!.end);
+    }
+
+    // Get tickets
+    final ticketsSnapshot = await query.get();
+    if (ticketsSnapshot.docs.isEmpty) {
+      yield [];
+      return;
+    }
+
+    // Parallel file loading
+    final filesFutures = ticketsSnapshot.docs.map((ticketDoc) async {
+      final filesSnapshot = await FirebaseFirestore.instance
+          .collection('tickets')
+          .doc(ticketDoc.id)
+          .collection('files')
+          .get();
       return {
-        ...doc.data(),
+        'ticketId': ticketDoc.id,
+        'refIds': filesSnapshot.docs
+            .map((fileDoc) => fileDoc.data()['ref_id']?.toString() ?? '')
+            .toList()
+      };
+    });
+
+    final filesResults = await Future.wait(filesFutures);
+    final filesMap = {
+      for (var result in filesResults)
+        result['ticketId'] as String: result['refIds'] as List<String>
+    };
+
+    // Convert tickets with type safety
+    final tickets = ticketsSnapshot.docs.map<Map<String, dynamic>>((doc) {
+      final data = doc.data();
+      return {
+        if (data is Map<String, dynamic>) ...data,
         'id': doc.id,
-        'fileRefIds': <String>[],
+        'fileRefIds': filesMap[doc.id] ?? <String>[],
       };
     }).toList();
 
-    // Filter by user ID if provided
-    if (widget.userId != null) {
-      tickets =
-          tickets.where((ticket) => ticket['userId'] == widget.userId).toList();
-    }
-
-    // Add files reference ids to the tickets
-    for (int i = 0; i < tickets.length; ++i) {
-      final fileSnapshot = await FirebaseFirestore.instance
-          .collection('tickets')
-          .doc(tickets[i]['id'])
-          .collection('files')
-          .get();
-      final List<String> fileRefIds = fileSnapshot.docs
-          .map((doc) => (doc.data()['ref_id'] ?? '').toString())
-          .toList();
-      tickets[i]['fileRefIds'] = fileRefIds;
-    }
-
-    // Filter by search query
     if (searchQuery.isNotEmpty) {
       final searchLower = searchQuery.toLowerCase();
-      tickets = tickets.where((ticket) {
-        final title = ticket['title']?.toLowerCase() ?? '';
-        final description = ticket['description']?.toLowerCase() ?? '';
-        final publisherId = ticket['userId'] ?? '';
-        final ticketReference = ticket['reference'] ?? '';
-        final refId = ticket['ref_id'] ?? '';
-        final publisherName = users[publisherId]?.toLowerCase() ?? '';
-        final List<String> fileRefIds =
-            (ticket['fileRefIds'] ?? '0000000000' as List<dynamic>)
-                .cast<String>();
-        final companies =
-            userCompanies[publisherId]?.map((e) => e.toLowerCase()) ?? [];
-        final reference = ticket['reference']?.toLowerCase() ?? '';
+      tickets.retainWhere((ticket) {
+        // Convert all potential search fields
+        final String title = (ticket['title']?.toString() ?? '').toLowerCase();
+        final String description =
+            (ticket['description']?.toString() ?? '').toLowerCase();
+        final String publisherId = ticket['userId']?.toString() ?? '';
+        final String ticketRefId =
+            (ticket['ref_id']?.toString() ?? '').toLowerCase();
+        final String ticketReference =
+            (ticket['reference']?.toString() ?? '').toLowerCase();
 
+        // Get related data
+        final String publisherName =
+            (users[publisherId]?.toString() ?? '').toLowerCase();
+        final List<String> fileRefIds =
+            (ticket['fileRefIds'] as List<dynamic>).cast<String>();
+        final List<String> companies = (userCompanies[publisherId] ?? [])
+            .map((e) => e.toString().toLowerCase())
+            .toList();
+
+        // Check all search conditions
         return title.contains(searchLower) ||
             description.contains(searchLower) ||
             publisherName.contains(searchLower) ||
             ticketReference.contains(searchLower) ||
-            refId.contains(searchLower) ||
-            fileRefIds.any(
-                (String refId) => refId.toLowerCase().contains(searchLower)) ||
-            companies.any((company) => company.contains(searchLower)) ||
-            reference.contains(searchLower);
-      }).toList();
+            ticketRefId.contains(searchLower) ||
+            fileRefIds
+                .any((refId) => refId.toLowerCase().contains(searchLower)) ||
+            companies.any((company) => company.contains(searchLower));
+      });
     }
-
-    // Filter by status
-    if (selectedFilter == 'status' && selectedFilterValue != null) {
-      tickets = tickets.where((ticket) {
-        return ticket['status'] == selectedFilterValue;
-      }).toList();
-    }
-
-    // Filter by date range
-    if (selectedDateRange != null) {
-      tickets = tickets.where((ticket) {
-        final createdDate = (ticket['createdDate'] as Timestamp).toDate();
-        return createdDate.isAfter(selectedDateRange!.start) &&
-            createdDate.isBefore(selectedDateRange!.end);
-      }).toList();
-    }
-
     yield tickets;
   }
 
