@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_dashboard/src/config/enums/ticket_status.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:intl/intl.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -12,55 +13,77 @@ class HomeScreen extends StatelessWidget {
         await FirebaseFirestore.instance.collection('tickets').get();
     final tickets = snapshot.docs;
 
-    int totalTickets = tickets.length;
-    int openTickets = tickets
-        .where(
-          (ticket) => ticket['status'] == 'Open',
-        )
-        .length;
-    int inProgressTickets = tickets
-        .where(
-          (ticket) => ticket['status'] == 'In Progress',
-        )
-        .length;
-    int closedTickets = tickets
-        .where(
-          (ticket) => ticket['status'] == 'Closed',
-        )
-        .length;
-
     return {
-      'total_tickets': totalTickets,
-      'open_tickets': openTickets,
-      'in_progress': inProgressTickets,
-      'closed_tickets': closedTickets,
+      'total': tickets.length,
+      'open': tickets.where((t) => t['status'] == 'Open').length,
+      'in_progress': tickets.where((t) => t['status'] == 'In Progress').length,
+      'closed': tickets.where((t) => t['status'] == 'Closed').length,
+      'rework': tickets.where((t) => t['status'] == 'needReWork').length,
+      'canceled': tickets.where((t) => t['status'] == 'canceled').length,
     };
   }
 
-  Future<List<Map<String, dynamic>>> _fetchTicketStatus() async {
+  Future<List<PieChartSectionData>> _fetchTicketStatusData() async {
     final snapshot =
         await FirebaseFirestore.instance.collection('tickets').get();
     final tickets = snapshot.docs;
 
-    Map<String, int> statusCounts = {
+    final statusCounts = {
       'Open': 0,
       'In Progress': 0,
       'Closed': 0,
+      'needReWork': 0,
+      'canceled': 0,
     };
 
     for (var ticket in tickets) {
-      String status = ticket['status'];
-      if (statusCounts.containsKey(status)) {
-        statusCounts[status] = statusCounts[status]! + 1;
-      }
+      final status = ticket['status'] as String;
+      statusCounts[status] = (statusCounts[status] ?? 0) + 1;
     }
 
-    return statusCounts.entries
-        .map((entry) => {
-              'status': entry.key,
-              'value': entry.value,
-            })
-        .toList();
+    final totalTickets = tickets.length;
+    if (totalTickets == 0) return [];
+
+    const double radius = 60;
+    const double fontSize = 14;
+
+    return [
+      _buildPieSection('Open', statusCounts['Open']!, totalTickets,
+          TicketStatus.open.getColor(), radius, fontSize),
+      _buildPieSection('In Progress', statusCounts['In Progress']!,
+          totalTickets, TicketStatus.inProgress.getColor(), radius, fontSize),
+      _buildPieSection('Closed', statusCounts['Closed']!, totalTickets,
+          TicketStatus.closed.getColor(), radius, fontSize),
+      _buildPieSection('Rework', statusCounts['needReWork']!, totalTickets,
+          TicketStatus.needReWork.getColor(), radius, fontSize),
+      _buildPieSection('Canceled', statusCounts['canceled']!, totalTickets,
+          TicketStatus.canceled.getColor(), radius, fontSize),
+    ];
+  }
+
+  PieChartSectionData _buildPieSection(
+    String title,
+    int value,
+    int total,
+    Color color,
+    double radius,
+    double fontSize,
+  ) {
+    final percentage = (value / total * 100).toStringAsFixed(1);
+    return PieChartSectionData(
+      value: value.toDouble(),
+      color: color,
+      title: '$value\n($percentage%)',
+      radius: radius,
+      titleStyle: TextStyle(
+        fontSize: fontSize,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+      ),
+      badgeWidget: _StatusBadge(title: title, color: color),
+      badgePositionPercentageOffset:
+          1.6, // Changed from .98 to 1.02 to move badges outward
+    );
   }
 
   Future<List<Map<String, dynamic>>> _fetchTicketsOverTime() async {
@@ -68,103 +91,90 @@ class HomeScreen extends StatelessWidget {
         await FirebaseFirestore.instance.collection('tickets').get();
     final tickets = snapshot.docs;
 
-    Map<String, int> ticketsOverTime = {};
+    final ticketsByDate = <String, int>{};
+    final dateFormat = DateFormat('MMM dd');
 
     for (var ticket in tickets) {
-      String date = ticket['createdDate'].toDate().toString().split(' ')[0];
-      if (ticketsOverTime.containsKey(date)) {
-        ticketsOverTime[date] = ticketsOverTime[date]! + 1;
-      } else {
-        ticketsOverTime[date] = 1;
-      }
+      final date = (ticket['createdDate'] as Timestamp).toDate();
+      final dateKey = dateFormat.format(date);
+      ticketsByDate[dateKey] = (ticketsByDate[dateKey] ?? 0) + 1;
     }
 
-    return ticketsOverTime.entries
-        .map((entry) => {
-              'date': entry.key,
-              'count': entry.value,
-            })
+    // Convert to list and sort with proper type safety
+    final resultList = ticketsByDate.entries
+        .map((e) => {'date': e.key as String, 'count': e.value as int})
         .toList();
+
+    resultList.sort((a, b) {
+      final dateA = a['date'] as String;
+      final dateB = b['date'] as String;
+      return dateA.compareTo(dateB);
+    });
+
+    return resultList;
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final cardColor = isDarkMode ? Colors.grey[900]! : Colors.white;
+
     return Scaffold(
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 20),
+            // Header Section
+            _buildHeaderSection(theme),
+            const SizedBox(height: 24),
+
+            // Statistics Cards
             FutureBuilder<Map<String, int>>(
               future: _fetchStatistics(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
+                  return _buildLoadingIndicator();
                 }
                 if (snapshot.hasError) {
-                  return Center(
-                    child: Text('Error: ${snapshot.error}'),
-                  );
+                  return _buildErrorWidget(snapshot.error.toString());
                 }
-                final stats = snapshot.data!;
-                return _buildStatisticsGrid(stats);
+                return _buildStatisticsGrid(snapshot.data!, cardColor);
               },
             ),
-            const SizedBox(height: 20),
-            const Text(
-              'Ticket Status Distribution',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 20),
-            FutureBuilder<List<Map<String, dynamic>>>(
-              future: _fetchTicketStatus(),
+            const SizedBox(height: 32),
+
+            // Ticket Status Distribution
+            _buildSectionTitle('Ticket Status Overview', theme),
+            const SizedBox(height: 16),
+            FutureBuilder<List<PieChartSectionData>>(
+              future: _fetchTicketStatusData(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
+                  return _buildLoadingIndicator();
                 }
                 if (snapshot.hasError) {
-                  return Center(
-                    child: Text('Error: ${snapshot.error}'),
-                  );
+                  return _buildErrorWidget(snapshot.error.toString());
                 }
-                final statusData = snapshot.data!;
-                return _buildPieChart(statusData);
+                return _buildEnhancedPieChart(snapshot.data!, theme);
               },
             ),
-            const SizedBox(height: 20),
-            const Text(
-              'Tickets Over Time',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 32),
+
+            // Tickets Over Time
+            _buildSectionTitle('Tickets Timeline', theme),
+            const SizedBox(height: 16),
             FutureBuilder<List<Map<String, dynamic>>>(
               future: _fetchTicketsOverTime(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
+                  return _buildLoadingIndicator();
                 }
                 if (snapshot.hasError) {
-                  return Center(
-                    child: Text(
-                      'Error: ${snapshot.error}',
-                    ),
-                  );
+                  return _buildErrorWidget(snapshot.error.toString());
                 }
-                final ticketsOverTime = snapshot.data!;
-                return _buildLineChart(ticketsOverTime);
+                return _buildEnhancedLineChart(snapshot.data!, theme);
               },
             ),
           ],
@@ -173,65 +183,135 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatisticsGrid(Map<String, int> stats) {
-    return StaggeredGrid.count(
-      crossAxisCount: 4,
-      mainAxisSpacing: 16.0,
-      crossAxisSpacing: 16.0,
+  Widget _buildHeaderSection(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildStatisticCard(
-          'Total Tickets',
-          stats['total_tickets'].toString(),
-          Colors.blue,
+        Text(
+          'Dashboard Overview',
+          style: theme.textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+          ),
         ),
-        _buildStatisticCard(
-          'Open Tickets',
-          stats['open_tickets'].toString(),
-          Colors.orange,
-        ),
-        _buildStatisticCard(
-          'In Progress',
-          stats['in_progress'].toString(),
-          Colors.purple,
-        ),
-        _buildStatisticCard(
-          'Closed Tickets',
-          stats['closed_tickets'].toString(),
-          Colors.green,
+        const SizedBox(height: 8),
+        Text(
+          'Track and analyze your support tickets',
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: theme.colorScheme.onSurface.withOpacity(0.7),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildStatisticCard(
+  Widget _buildSectionTitle(String title, ThemeData theme) {
+    return Text(
+      title,
+      style: theme.textTheme.titleLarge?.copyWith(
+        fontWeight: FontWeight.bold,
+        color: theme.colorScheme.onSurface,
+      ),
+    );
+  }
+
+  Widget _buildStatisticsGrid(Map<String, int> stats, Color cardColor) {
+    return StaggeredGrid.count(
+      crossAxisCount: 4,
+      mainAxisSpacing: 16,
+      crossAxisSpacing: 16,
+      children: [
+        _buildEnhancedStatCard(
+          'Total Tickets',
+          stats['total']!,
+          Icons.assignment,
+          Colors.blue,
+          cardColor,
+        ),
+        _buildEnhancedStatCard(
+          'Open',
+          stats['open']!,
+          Icons.lock_open,
+          Colors.orange,
+          cardColor,
+        ),
+        _buildEnhancedStatCard(
+          'In Progress',
+          stats['in_progress']!,
+          Icons.autorenew,
+          Colors.purple,
+          cardColor,
+        ),
+        _buildEnhancedStatCard(
+          'Closed',
+          stats['closed']!,
+          Icons.check_circle,
+          Colors.green,
+          cardColor,
+        ),
+        _buildEnhancedStatCard(
+          'Rework',
+          stats['rework']!,
+          Icons.build,
+          Colors.red,
+          cardColor,
+        ),
+        _buildEnhancedStatCard(
+          'Canceled',
+          stats['canceled']!,
+          Icons.cancel,
+          Colors.grey,
+          cardColor,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEnhancedStatCard(
     String title,
-    String value,
+    int value,
+    IconData icon,
     Color color,
+    Color cardColor,
   ) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(12),
       ),
+      color: cardColor,
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: color),
+                ),
+                Text(
+                  value.toString(),
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
             Text(
               title,
               style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: color,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
@@ -240,66 +320,219 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPieChart(List<Map<String, dynamic>> statusData) {
-    return SizedBox(
-      height: 300,
-      child: PieChart(
-        PieChartData(
-          sections: statusData.map((data) {
-            return PieChartSectionData(
-              value: data['value'].toDouble(),
-              color: TicketStatus.fromString(data['status']).getColor(),
-              title: data['status'],
-              radius: 50,
-              titleStyle: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+  Widget _buildEnhancedPieChart(
+      List<PieChartSectionData>? data, ThemeData theme) {
+    if (data == null || data.isEmpty) {
+      return const Center(child: Text('No ticket data available'));
+    }
+
+    return Container(
+      height: 360,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: PieChart(
+              PieChartData(
+                sections: data,
+                centerSpaceRadius: 80,
+                sectionsSpace: 2,
+                startDegreeOffset: -90,
               ),
-            );
-          }).toList(),
-          centerSpaceRadius: 60,
-          sectionsSpace: 0,
-        ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: data.map((section) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: section.color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          section.badgeWidget is _StatusBadge
+                              ? (section.badgeWidget as _StatusBadge).title
+                              : '',
+                          style: theme.textTheme.bodyMedium,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildLineChart(List<Map<String, dynamic>> ticketsOverTime) {
-    return SizedBox(
+  Widget _buildEnhancedLineChart(
+      List<Map<String, dynamic>> data, ThemeData theme) {
+    if (data.isEmpty) {
+      return const Center(child: Text('No timeline data available'));
+    }
+
+    final maxY =
+        data.map((e) => e['count']).reduce((a, b) => a > b ? a : b).toDouble();
+
+    return Container(
       height: 300,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: LineChart(
         LineChartData(
-          gridData: FlGridData(show: true),
-          titlesData: FlTitlesData(show: true),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: true,
+            getDrawingHorizontalLine: (value) => FlLine(
+              color: theme.dividerColor.withOpacity(0.3),
+              strokeWidth: 1,
+            ),
+            getDrawingVerticalLine: (value) => FlLine(
+              color: theme.dividerColor.withOpacity(0.3),
+              strokeWidth: 1,
+            ),
+          ),
+          titlesData: FlTitlesData(
+            show: true,
+            rightTitles: const AxisTitles(),
+            topTitles: const AxisTitles(),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  if (value.toInt() < data.length) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        data[value.toInt()]['date'],
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    );
+                  }
+                  return const Text('');
+                },
+                reservedSize: 36,
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  return Text(
+                    value.toInt().toString(),
+                    style: theme.textTheme.bodySmall,
+                  );
+                },
+                reservedSize: 40,
+              ),
+            ),
+          ),
           borderData: FlBorderData(
             show: true,
             border: Border.all(
-              color: const Color(0xff37434d),
+              color: theme.dividerColor,
               width: 1,
             ),
           ),
           minX: 0,
-          maxX: ticketsOverTime.length.toDouble() - 1,
+          maxX: data.length.toDouble() - 1,
           minY: 0,
-          maxY: ticketsOverTime
-              .map((e) => e['count'])
-              .reduce((a, b) => a > b ? a : b)
-              .toDouble(),
+          maxY: maxY + (maxY * 0.1), // Add 10% padding
           lineBarsData: [
             LineChartBarData(
-              spots: ticketsOverTime.asMap().entries.map((entry) {
+              spots: data.asMap().entries.map((entry) {
                 return FlSpot(
                   entry.key.toDouble(),
                   entry.value['count'].toDouble(),
                 );
               }).toList(),
               isCurved: true,
-              color: Colors.blue,
-              dotData: FlDotData(show: false),
-              belowBarData: BarAreaData(show: false),
+              color: theme.colorScheme.primary,
+              barWidth: 4,
+              isStrokeCapRound: true,
+              dotData: const FlDotData(show: false),
+              belowBarData: BarAreaData(
+                show: true,
+                gradient: LinearGradient(
+                  colors: [
+                    theme.colorScheme.primary.withOpacity(0.3),
+                    theme.colorScheme.primary.withOpacity(0.1),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingIndicator() {
+    return const Center(
+      heightFactor: 5,
+      child: CircularProgressIndicator(),
+    );
+  }
+
+  Widget _buildErrorWidget(String error) {
+    return Center(
+      heightFactor: 5,
+      child: Text(
+        'Error: $error',
+        style: const TextStyle(color: Colors.red),
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final String title;
+  final Color color;
+
+  const _StatusBadge({
+    required this.title,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        title,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );
