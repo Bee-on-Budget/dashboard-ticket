@@ -4,6 +4,8 @@ enum TicketStatus {
   open,
   closed,
   inProgress,
+  canceled,
+  needReWork,
   unknown;
 
   static TicketStatus fromString(String status) {
@@ -14,6 +16,10 @@ enum TicketStatus {
         return TicketStatus.inProgress;
       case 'Closed':
         return TicketStatus.closed;
+      case 'Canceled':
+        return TicketStatus.canceled;
+      case 'Need Re-work':
+        return TicketStatus.needReWork;
       default:
         return TicketStatus.unknown;
     }
@@ -27,6 +33,10 @@ enum TicketStatus {
         return Colors.orange;
       case TicketStatus.closed:
         return Colors.green;
+      case TicketStatus.canceled:
+        return Colors.red;
+      case TicketStatus.needReWork:
+        return Colors.deepOrange;
       case TicketStatus.unknown:
         return Colors.grey;
     }
