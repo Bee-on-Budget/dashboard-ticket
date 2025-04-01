@@ -134,8 +134,18 @@ class _AbsolutelyVisibleUserDetailsScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('User Details'),
-        backgroundColor: Colors.blue,
+        title: const Text(
+          'User Details',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: const Color(0xFF44564A),
+        iconTheme: IconThemeData(
+          color: Colors.white,
+        ),
         elevation: 2,
       ),
       body: SingleChildScrollView(
@@ -206,25 +216,6 @@ class _AbsolutelyVisibleUserDetailsScreenState
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // View Tickets Button
-                SizedBox(
-                  width: 140,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      debugPrint('View tickets pressed');
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      side: const BorderSide(color: Colors.blue),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      'View Tickets',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                  ),
-                ),
 
                 const SizedBox(width: 16),
 
