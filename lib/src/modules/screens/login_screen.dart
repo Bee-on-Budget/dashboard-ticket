@@ -25,7 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (identifier.isNotEmpty && password.isNotEmpty) {
       final user =
-          await AuthService().signInWithEmailAndPassword(identifier, password);
+      await AuthService().signInWithEmailAndPassword(identifier, password);
 
       if (user != null) {
         final role = await AuthService().getRole(user.uid);
@@ -87,7 +87,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final double screenWidth = MediaQuery.of(context).size.width;
+    final double screenWidth = MediaQuery
+        .of(context)
+        .size
+        .width;
     final double width = min(screenWidth * 0.4, 600); // Wider for big screens
 
     return Scaffold(
@@ -169,7 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         labelText: isEmailSelected ? 'Email' : 'Phone Number',
                         border: OutlineInputBorder(),
                         prefixIcon:
-                            Icon(isEmailSelected ? Icons.email : Icons.phone),
+                        Icon(isEmailSelected ? Icons.email : Icons.phone),
                       ),
                       keyboardType: isEmailSelected
                           ? TextInputType.emailAddress
