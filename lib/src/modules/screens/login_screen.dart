@@ -236,9 +236,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               Positioned(
-                top: -70,
+                top: -(width * 0.2 / 2),
                 child: Image.asset(
-                  'assets/images/logo-round.png',
+                  'assets/images/1024-nobg-round.png',
                   width: width * 0.2,
                 ),
               ),
