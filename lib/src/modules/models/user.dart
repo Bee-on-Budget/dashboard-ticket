@@ -35,7 +35,7 @@ class User {
       userId: json["userId"] ?? id, // Use `id` if `userId` is not provided
       username: json["username"] ?? "No Username",
       role: UserRole.fromString(json["role"] ?? "unknown"),
-      email: json["identifier"] ?? "No Email",
+      email: json["email"] ?? "No Email",
       phoneNumber: _getPhoneFromEmail(json["phoneNumber"]),
       paymentMethods: json["paymentMethods"] != null
           ? (json["paymentMethods"] as List<dynamic>)

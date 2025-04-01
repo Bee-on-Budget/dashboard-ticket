@@ -76,7 +76,7 @@ class AuthService {
       if (!userDoc.exists) {
         await _firestore.collection('users').doc(uid).set({
           'uid': uid,
-          'identifier': identifier,
+          'email': identifier,
           'username': username,
           'companies': companies,
           'paymentMethods': paymentMethods,
