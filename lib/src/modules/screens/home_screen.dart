@@ -18,8 +18,8 @@ class HomeScreen extends StatelessWidget {
       'open': tickets.where((t) => t['status'] == 'Open').length,
       'in_progress': tickets.where((t) => t['status'] == 'In Progress').length,
       'closed': tickets.where((t) => t['status'] == 'Closed').length,
-      'rework': tickets.where((t) => t['status'] == 'needReWork').length,
-      'canceled': tickets.where((t) => t['status'] == 'canceled').length,
+      'rework': tickets.where((t) => t['status'] == 'Need Re-work').length,
+      'canceled': tickets.where((t) => t['status'] == 'Canceled').length,
     };
   }
 
