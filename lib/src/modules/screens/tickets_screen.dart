@@ -66,7 +66,9 @@ class _TicketsScreenState extends State<TicketsScreen> {
     try {
       final adminSnapshot = await FirebaseFirestore.instance
           .collection('users')
-          .where('role', whereIn: ['admin', 'Admin']).get();
+          .where('role', whereIn: ['admin', 'Admin'])
+          .where('isActive', isEqualTo: true) // Add this line
+          .get();
 
       if (mounted) {
         setState(() {
@@ -86,8 +88,10 @@ class _TicketsScreenState extends State<TicketsScreen> {
 
   Future<void> _fetchUsers() async {
     try {
-      final userSnapshot =
-          await FirebaseFirestore.instance.collection('users').get();
+      final userSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('isActive', isEqualTo: true) // Add this line
+          .get();
 
       setState(() {
         users = {

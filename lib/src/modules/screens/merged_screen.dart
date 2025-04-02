@@ -6,7 +6,6 @@ import 'home_screen.dart';
 import 'create_user_screen.dart';
 import 'tickets_screen.dart';
 import 'profile_screen.dart';
-// MergedScreen.dart
 
 class MergedScreen extends StatefulWidget {
   const MergedScreen({super.key});
@@ -15,6 +14,7 @@ class MergedScreen extends StatefulWidget {
   State<MergedScreen> createState() => MergedScreenState();
 }
 
+// MergedScreen.dart
 class MergedScreenState extends State<MergedScreen> {
   int _currentIndex = 3; // Private variable
 
@@ -114,32 +114,6 @@ class MergedScreenState extends State<MergedScreen> {
       body: IndexedStack(
         index: _currentIndex,
         children: _pages,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_add),
-            label: 'Create User',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.list),
-            label: 'Tickets',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
       ),
     );
   }
