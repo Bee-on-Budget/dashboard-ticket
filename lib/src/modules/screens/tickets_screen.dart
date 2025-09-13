@@ -228,7 +228,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
               Padding(
                 padding: const EdgeInsets.only(top: 10),
                 child: Text(
-                  '${DateFormat('MMM dd').format(selectedDateRange!.start)} - ${DateFormat('MMM dd').format(selectedDateRange!.end)}',
+                  '${DateFormat('MMM dd, yyyy').format(selectedDateRange!.start)} - ${DateFormat('MMM dd, yyyy').format(selectedDateRange!.end)}',
                   style: const TextStyle(
                     color: primaryColor,
                     fontSize: 12,
@@ -288,7 +288,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
     final DateTimeRange? picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
+      lastDate: DateTime(2030),
       helpText: "Select Date Range",
       builder: (context, child) {
         return Theme(
@@ -337,9 +337,17 @@ class _TicketsScreenState extends State<TicketsScreen> {
       query = query.where('status', isEqualTo: selectedFilterValue);
     }
     if (selectedDateRange != null) {
+      // Convert dates to UTC and adjust for proper range filtering
+      final startDate = DateTime(selectedDateRange!.start.year, 
+                                selectedDateRange!.start.month, 
+                                selectedDateRange!.start.day);
+      final endDate = DateTime(selectedDateRange!.end.year, 
+                              selectedDateRange!.end.month, 
+                              selectedDateRange!.end.day, 23, 59, 59);
+      
       query = query
-          .where('createdDate', isGreaterThan: selectedDateRange!.start)
-          .where('createdDate', isLessThan: selectedDateRange!.end);
+          .where('createdDate', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+          .where('createdDate', isLessThanOrEqualTo: Timestamp.fromDate(endDate));
     }
 
     // Get tickets
@@ -355,19 +363,30 @@ class _TicketsScreenState extends State<TicketsScreen> {
           .collection('tickets')
           .doc(ticketDoc.id)
           .collection('files')
+          .orderBy('uploadedAt', descending: true)
           .get();
+      
+      DateTime? latestUploadDate;
+      if (filesSnapshot.docs.isNotEmpty) {
+        final latestFile = filesSnapshot.docs.first;
+        latestUploadDate = (latestFile.data()['uploadedAt'] as Timestamp?)?.toDate();
+      }
+      
       return {
         'ticketId': ticketDoc.id,
-        'refIds': filesSnapshot.docs
-            .map((fileDoc) => fileDoc.data()['ref_id']?.toString() ?? '')
-            .toList()
+        'fileCount': filesSnapshot.docs.length,
+        'fileIds': filesSnapshot.docs.map((fileDoc) => fileDoc.id).toList(),
+        'latestUploadDate': latestUploadDate,
       };
     });
 
     final filesResults = await Future.wait(filesFutures);
     final filesMap = {
       for (var result in filesResults)
-        result['ticketId'] as String: result['refIds'] as List<String>
+        result['ticketId'] as String: {
+          'fileIds': result['fileIds'] as List<String>,
+          'latestUploadDate': result['latestUploadDate'] as DateTime?,
+        }
     };
 
     // Convert tickets with type safety
@@ -376,7 +395,8 @@ class _TicketsScreenState extends State<TicketsScreen> {
       return {
         if (data is Map<String, dynamic>) ...data,
         'id': doc.id,
-        'fileRefIds': filesMap[doc.id] ?? <String>[],
+        'fileIds': filesMap[doc.id]?['fileIds'] ?? <String>[],
+        'latestUploadDate': filesMap[doc.id]?['latestUploadDate'],
       };
     }).toList();
 
@@ -396,8 +416,8 @@ class _TicketsScreenState extends State<TicketsScreen> {
         // Get related data
         final String publisherName =
             (users[publisherId]?.toString() ?? '').toLowerCase();
-        final List<String> fileRefIds =
-            (ticket['fileRefIds'] as List<dynamic>).cast<String>();
+        final List<String> fileIds =
+            (ticket['fileIds'] as List<dynamic>).cast<String>();
         final List<String> companies = (userCompanies[publisherId] ?? [])
             .map((e) => e.toString().toLowerCase())
             .toList();
@@ -408,8 +428,8 @@ class _TicketsScreenState extends State<TicketsScreen> {
             publisherName.contains(searchLower) ||
             ticketReference.contains(searchLower) ||
             ticketRefId.contains(searchLower) ||
-            fileRefIds
-                .any((refId) => refId.toLowerCase().contains(searchLower)) ||
+            fileIds
+                .any((fileId) => fileId.toLowerCase().contains(searchLower)) ||
             companies.any((company) => company.contains(searchLower));
       });
     }
@@ -495,6 +515,43 @@ class _TicketsScreenState extends State<TicketsScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
+                            const SizedBox(height: 4),
+                            if (ticket['createdDate'] != null)
+                              Text(
+                                'Created: ${DateFormat('MMM dd, yyyy - HH:mm').format((ticket['createdDate'] as Timestamp).toDate())}',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
+                                ),
+                              ),
+                            if (ticket['latestUploadDate'] != null)
+                              Text(
+                                'Latest Upload: ${DateFormat('MMM dd, yyyy - HH:mm').format(ticket['latestUploadDate'] as DateTime)}',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
+                                ),
+                              ),
+                            const SizedBox(height: 4),
+                            if (ticket['fileIds'] != null && (ticket['fileIds'] as List).isNotEmpty)
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.attach_file,
+                                    size: 16,
+                                    color: Colors.grey[600],
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${(ticket['fileIds'] as List).length} attachment${(ticket['fileIds'] as List).length == 1 ? '' : 's'}',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
                           ],
                         ),
                       ),
@@ -579,6 +636,23 @@ class _TicketsScreenState extends State<TicketsScreen> {
                 selectedTicketData?['description'] ?? 'No Description',
                 style: const TextStyle(fontSize: 16),
               ),
+              const SizedBox(height: 16),
+              if (selectedTicketData?['createdDate'] != null)
+                Text(
+                  'Created: ${DateFormat('MMM dd, yyyy - HH:mm').format((selectedTicketData!['createdDate'] as Timestamp).toDate())}',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 14,
+                  ),
+                ),
+              if (selectedTicketData?['latestUploadDate'] != null)
+                Text(
+                  'Latest Upload: ${DateFormat('MMM dd, yyyy - HH:mm').format(selectedTicketData!['latestUploadDate'] as DateTime)}',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 14,
+                  ),
+                ),
               const SizedBox(height: 16),
               TextField(
                 controller: referenceController,
