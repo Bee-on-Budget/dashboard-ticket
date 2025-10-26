@@ -628,7 +628,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
     if (selectedTicketData == null) return Container();
 
     String? currentUserUid = FirebaseAuth.instance.currentUser?.uid;
-    bool isAssignedToCurrentUser = selectedTicketData?['assignedAdminId'] == null || selectedTicketData?['assignedAdminId'] == currentUserUid;
+    bool isAssignedToCurrentUser = selectedTicketData?['assignedAdminId'] == currentUserUid;
 
     return StreamBuilder<List<Map<String, String>>>(
       stream: DataService.getTicketFiles(selectedTicketId!),
