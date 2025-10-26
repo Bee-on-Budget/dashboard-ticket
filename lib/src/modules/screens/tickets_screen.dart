@@ -516,6 +516,17 @@ class _TicketsScreenState extends State<TicketsScreen> {
                               ),
                             ),
                             const SizedBox(height: 4),
+                            if (ticket['ref_id']?.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  'Reference Id: ${ticket['ref_id']}',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
                             if (ticket['createdDate'] != null)
                               Text(
                                 'Created: ${DateFormat('MMM dd, yyyy - HH:mm').format((ticket['createdDate'] as Timestamp).toDate())}',
