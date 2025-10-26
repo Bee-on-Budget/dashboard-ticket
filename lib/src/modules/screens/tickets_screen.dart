@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -626,6 +627,9 @@ class _TicketsScreenState extends State<TicketsScreen> {
   Widget _buildTicketDetail() {
     if (selectedTicketData == null) return Container();
 
+    String? currentUserUid = FirebaseAuth.instance.currentUser?.uid;
+    bool isAssignedToCurrentUser = selectedTicketData?['assignedAdminId'] == currentUserUid;
+
     return StreamBuilder<List<Map<String, String>>>(
       stream: DataService.getTicketFiles(selectedTicketId!),
       builder: (context, snapshot) {
@@ -758,9 +762,11 @@ class _TicketsScreenState extends State<TicketsScreen> {
                     borderRadius: BorderRadius.circular(15),
                   ),
                 ),
-                onChanged: (String? newValue) {
-                  _updateTicketStatus(selectedTicketId!, newValue!);
-                },
+                onChanged: (isAssignedToCurrentUser)
+                    ? (String? newValue) {
+                        _updateTicketStatus(selectedTicketId!, newValue!);
+                      }
+                    : null,
                 items: statusOptions.map<DropdownMenuItem<String>>(
                   (String value) {
                     return DropdownMenuItem<String>(
