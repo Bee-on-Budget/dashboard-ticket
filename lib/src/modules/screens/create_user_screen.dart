@@ -423,23 +423,26 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
             child: ListView.builder(
               shrinkWrap: true,
               itemCount: _filteredCompanies.length,
+              primary: false,
+              physics: const ClampingScrollPhysics(),
               itemBuilder: (context, index) {
                 final company = _filteredCompanies[index];
-                return GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    // Unfocus first to prevent the DOM error
-                    FocusManager.instance.primaryFocus?.unfocus();
-
-                    // Delay slightly to ensure unfocus completes
-                    Future.delayed(Duration.zero, () {
+                return Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    // onTapDown fires before focus changes on web/desktop
+                    onTapDown: (_) {
+                      // unfocus immediately to avoid the TextField stealing the tap
+                      FocusScope.of(context).unfocus();
+                      // select company right away
                       _selectCompany(company);
-                      setState(() {});
-                    });
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(company),
+                      // ensure the UI updates
+                      if (mounted) setState(() {});
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(company),
+                    ),
                   ),
                 );
               },
