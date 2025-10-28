@@ -16,7 +16,7 @@ class MergedScreen extends StatefulWidget {
 
 // MergedScreen.dart
 class MergedScreenState extends State<MergedScreen> {
-  int _currentIndex = 3; // Private variable
+  int _currentIndex = 0; // Private variable
 
   // Public method to update _currentIndex
   void updateCurrentIndex(int index) {
