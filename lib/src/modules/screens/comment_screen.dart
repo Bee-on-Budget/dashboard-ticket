@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../config/db_collections.dart';
 
 import '../../service/synchronized_time.dart';
 import '../models/ticket_file.dart';
@@ -57,7 +58,7 @@ class _FileMessagingPageState extends State<CommentScreen> {
           Expanded(
             child: StreamBuilder<DocumentSnapshot>(
               stream: _firestore
-                  .collection('tickets')
+                  .collection(DbCollections.tickets)
                   .doc(widget.ticketId)
                   .collection('files')
                   .doc(widget.file.fileId)
@@ -107,7 +108,7 @@ class _FileMessagingPageState extends State<CommentScreen> {
   }
 
   Future<String> _getUsername(String senderId) async {
-    final userDoc = await _firestore.collection('users').doc(senderId).get();
+    final userDoc = await _firestore.collection(DbCollections.users).doc(senderId).get();
     if (userDoc.exists) {
       return userDoc.data()?['username'] ?? 'Unknown User';
     }
@@ -221,7 +222,7 @@ class _FileMessagingPageState extends State<CommentScreen> {
 
     try {
       final fileRef = _firestore
-          .collection('tickets')
+          .collection(DbCollections.tickets)
           .doc(widget.ticketId)
           .collection('files')
           .doc(widget.file.fileId);

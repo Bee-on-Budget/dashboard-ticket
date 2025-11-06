@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../../config/db_collections.dart';
+import '../../config/enums/payment_methods.dart';
+import '../../service/data_service.dart';
 
 class AbsolutelyVisibleUserDetailsScreen extends StatefulWidget {
   final String userId;
@@ -24,33 +26,80 @@ class _AbsolutelyVisibleUserDetailsScreenState
   late bool _currentStatus;
   List<String> userCompanies = [];
   bool isLoadingCompanies = false;
+  Map<String, List<PaymentMethods>> companyPaymentMethods = {};
+  bool isLoadingPaymentMethods = false;
 
   @override
   void initState() {
     super.initState();
     _currentStatus = widget.isActive;
-    _loadUserCompanies();
+    _loadUserCompaniesAndPaymentMethods();
   }
 
-  Future<void> _loadUserCompanies() async {
-    setState(() => isLoadingCompanies = true);
+  Future<void> _loadUserCompaniesAndPaymentMethods() async {
+    setState(() {
+      isLoadingCompanies = true;
+      isLoadingPaymentMethods = true;
+    });
+
     try {
       final doc = await FirebaseFirestore.instance
-          .collection('users')
+          .collection(DbCollections.users)
           .doc(widget.userId)
           .get();
 
       if (doc.exists) {
         final data = doc.data() as Map<String, dynamic>;
         final companies = data['companies'] as List<dynamic>? ?? [];
+        final companyNames = companies.map((e) => e.toString()).toList();
+
         setState(() {
-          userCompanies = companies.map((e) => e.toString()).toList();
+          userCompanies = companyNames;
+          isLoadingCompanies = false;
         });
+
+        // Load payment methods for each company
+        if (companyNames.isNotEmpty) {
+          final companiesSnapshot = await FirebaseFirestore.instance
+              .collection(DbCollections.companies)
+              .where('name', whereIn: companyNames)
+              .get();
+
+          final Map<String, List<PaymentMethods>> paymentMethodsMap = {};
+
+          for (var companyDoc in companiesSnapshot.docs) {
+            final companyData = companyDoc.data();
+            final companyName = companyData['name'] as String;
+            final methods =
+                companyData['paymentMethods'] as List<dynamic>? ?? [];
+
+            final paymentMethods = <PaymentMethods>[];
+            for (var method in methods) {
+              final pm = PaymentMethods.fromString(method.toString());
+              if (pm != null) {
+                paymentMethods.add(pm);
+              }
+            }
+
+            paymentMethodsMap[companyName] = paymentMethods;
+          }
+
+          setState(() {
+            companyPaymentMethods = paymentMethodsMap;
+            isLoadingPaymentMethods = false;
+          });
+        } else {
+          setState(() {
+            isLoadingPaymentMethods = false;
+          });
+        }
       }
     } catch (e) {
-      debugPrint('Error loading companies: $e');
-    } finally {
-      setState(() => isLoadingCompanies = false);
+      debugPrint('Error loading companies and payment methods: $e');
+      setState(() {
+        isLoadingCompanies = false;
+        isLoadingPaymentMethods = false;
+      });
     }
   }
 
@@ -75,6 +124,12 @@ class _AbsolutelyVisibleUserDetailsScreenState
               final company = userCompanies[index];
               return ListTile(
                 title: Text(company),
+                subtitle: Text(
+                  companyPaymentMethods[company]?.isNotEmpty == true
+                      ? 'Payment methods: ${companyPaymentMethods[company]!.map((pm) => pm.toString()).join(', ')}'
+                      : 'No payment methods',
+                  style: const TextStyle(fontSize: 12),
+                ),
                 onTap: () => Navigator.pop(context, company),
               );
             },
@@ -89,44 +144,90 @@ class _AbsolutelyVisibleUserDetailsScreenState
       ),
     );
 
-    if (selectedCompany != null) {
+    if (selectedCompany != null && mounted) {
       await _deactivateCompanyUsers(selectedCompany, context);
     }
   }
 
   Future<void> _deactivateCompanyUsers(
-      String company, BuildContext context) async {
+      String companyName, BuildContext context) async {
+    // Show confirmation dialog
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Deactivation'),
+        content: Text(
+          'This will deactivate the company "$companyName" and ALL users assigned to it. This action cannot be undone. Do you want to continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Deactivate'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
     try {
-      final usersSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('companies', arrayContains: company)
+      // Step 1: Get the company document
+      final companiesSnapshot = await FirebaseFirestore.instance
+          .collection('companies')
+          .where('name', isEqualTo: companyName)
           .get();
 
-      final batch = FirebaseFirestore.instance.batch();
-
-      for (final doc in usersSnapshot.docs) {
-        batch.update(doc.reference, {'isActive': false});
+      if (companiesSnapshot.docs.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Company not found'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
       }
 
-      await batch.commit();
+      // Step 2: Deactivate the company (this will auto-deactivate all users via DataService)
+      final companyBatch = FirebaseFirestore.instance.batch();
+      for (final doc in companiesSnapshot.docs) {
+        companyBatch.update(doc.reference, {'isActive': false});
+      }
+      await companyBatch.commit();
 
-      if (userCompanies.contains(company)) {
+      // Step 3: Use DataService to deactivate all users in the company
+      await DataService.deactivateCompanyUsers(companyName);
+
+      // Update local status if current user is affected
+      if (userCompanies.contains(companyName)) {
         setState(() => _currentStatus = false);
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Deactivated all users of $company'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text('Deactivated company "$companyName" and all its users'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -143,7 +244,7 @@ class _AbsolutelyVisibleUserDetailsScreenState
           ),
         ),
         backgroundColor: const Color(0xFF44564A),
-        iconTheme: IconThemeData(
+        iconTheme: const IconThemeData(
           color: Colors.white,
         ),
         elevation: 2,
@@ -184,25 +285,159 @@ class _AbsolutelyVisibleUserDetailsScreenState
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      _currentStatus ? 'Active account' : 'Inactive account',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: _currentStatus ? Colors.green : Colors.grey,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _currentStatus
+                            ? Colors.green.withOpacity(0.1)
+                            : Colors.grey.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: _currentStatus ? Colors.green : Colors.grey,
+                        ),
+                      ),
+                      child: Text(
+                        _currentStatus ? 'Active account' : 'Inactive account',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: _currentStatus ? Colors.green : Colors.grey,
+                        ),
                       ),
                     ),
-                    if (isLoadingCompanies)
+
+                    // Loading indicator
+                    if (isLoadingCompanies || isLoadingPaymentMethods)
                       const Padding(
-                        padding: EdgeInsets.only(top: 8),
+                        padding: EdgeInsets.only(top: 16),
                         child: CircularProgressIndicator(),
                       ),
-                    if (userCompanies.isNotEmpty) ...[
+
+                    // Companies and Payment Methods Section
+                    if (!isLoadingCompanies &&
+                        !isLoadingPaymentMethods &&
+                        userCompanies.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      const Divider(),
                       const SizedBox(height: 16),
                       const Text(
-                        'Associated Companies:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        'Companies & Payment Methods',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
                       ),
-                      ...userCompanies.map((company) => Text(company)).toList(),
+                      const SizedBox(height: 16),
+                      ...userCompanies.map((company) {
+                        final paymentMethods =
+                            companyPaymentMethods[company] ?? [];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.blue.withOpacity(0.3),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Company Name
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.business,
+                                      size: 20,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      company,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+
+                              // Payment Methods
+                              const Text(
+                                'Payment Methods:',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              if (paymentMethods.isEmpty)
+                                const Text(
+                                  'No payment methods available',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontStyle: FontStyle.italic,
+                                    color: Colors.grey,
+                                  ),
+                                )
+                              else
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: paymentMethods.map((method) {
+                                    return Chip(
+                                      avatar: const Icon(
+                                        Icons.payment,
+                                        size: 14,
+                                        color: Colors.blue,
+                                      ),
+                                      label: Text(
+                                        method.toString(),
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                      backgroundColor:
+                                          Colors.blue.withOpacity(0.15),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                        vertical: 2,
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ],
+
+                    // No companies message
+                    if (!isLoadingCompanies && userCompanies.isEmpty) ...[
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'No companies assigned',
+                        style: TextStyle(
+                          fontStyle: FontStyle.italic,
+                          color: Colors.grey,
+                        ),
+                      ),
                     ],
                   ],
                 ),
@@ -211,15 +446,38 @@ class _AbsolutelyVisibleUserDetailsScreenState
 
             const SizedBox(height: 32),
 
+            // Warning Card
+            if (userCompanies.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning, color: Colors.orange),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Deactivating a company will deactivate all users in it',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.orange[900],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             // Action Buttons Row
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // View Tickets Button
-
-                const SizedBox(width: 16),
-
-                // Deactivate Company Button - Now always visible
+                // Deactivate Company Button
                 SizedBox(
                   width: 140,
                   child: ElevatedButton(
@@ -294,7 +552,7 @@ class _AbsolutelyVisibleUserDetailsScreenState
   Future<void> _toggleStatus(BuildContext context) async {
     try {
       await FirebaseFirestore.instance
-          .collection('users')
+          .collection(DbCollections.users)
           .doc(widget.userId)
           .update({'isActive': !_currentStatus});
 
@@ -302,20 +560,24 @@ class _AbsolutelyVisibleUserDetailsScreenState
         _currentStatus = !_currentStatus;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content:
-              Text(!_currentStatus ? 'User deactivated' : 'User activated'),
-          backgroundColor: !_currentStatus ? Colors.red : Colors.green,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text(!_currentStatus ? 'User deactivated' : 'User activated'),
+            backgroundColor: !_currentStatus ? Colors.red : Colors.green,
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }

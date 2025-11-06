@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_dashboard/src/config/db_collections.dart';
 import 'package:flutter_dashboard/src/config/enums/ticket_status.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:intl/intl.dart';
@@ -10,7 +11,7 @@ class HomeScreen extends StatelessWidget {
 
   Future<Map<String, int>> _fetchStatistics() async {
     final snapshot =
-        await FirebaseFirestore.instance.collection('tickets').get();
+        await FirebaseFirestore.instance.collection(DbCollections.tickets).get();
     final tickets = snapshot.docs;
 
     return {
@@ -25,7 +26,7 @@ class HomeScreen extends StatelessWidget {
 
   Future<List<PieChartSectionData>> _fetchTicketStatusData() async {
     final snapshot =
-        await FirebaseFirestore.instance.collection('tickets').get();
+        await FirebaseFirestore.instance.collection(DbCollections.tickets).get();
     final tickets = snapshot.docs;
 
     final statusCounts = {
@@ -88,7 +89,7 @@ class HomeScreen extends StatelessWidget {
 
   Future<List<Map<String, dynamic>>> _fetchTicketsOverTime() async {
     final snapshot =
-        await FirebaseFirestore.instance.collection('tickets').get();
+        await FirebaseFirestore.instance.collection(DbCollections.tickets).get();
     final tickets = snapshot.docs;
 
     final ticketsByDate = <String, int>{};

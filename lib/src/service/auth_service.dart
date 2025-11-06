@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../config/db_collections.dart';
 
 class AuthService {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
@@ -71,10 +72,10 @@ class AuthService {
   ) async {
     try {
       DocumentSnapshot userDoc =
-          await _firestore.collection('users').doc(uid).get();
+          await _firestore.collection(DbCollections.users).doc(uid).get();
 
       if (!userDoc.exists) {
-        await _firestore.collection('users').doc(uid).set({
+        await _firestore.collection(DbCollections.users).doc(uid).set({
           'uid': uid,
           'email': identifier,
           'username': username,
@@ -106,9 +107,21 @@ class AuthService {
       final user = userCredential.user;
       if (user != null) {
         final userDoc =
-            await _firestore.collection('users').doc(user.uid).get();
-        final role = userDoc['role'] as String?;
-        final isActive = userDoc['isActive'] as bool? ?? true;
+            await _firestore.collection(DbCollections.users).doc(user.uid).get();
+        
+        if (!userDoc.exists) {
+          debugPrint('User document does not exist in Firestore');
+          return null;
+        }
+        
+        final userData = userDoc.data();
+        if (userData == null) {
+          debugPrint('User document data is null');
+          return null;
+        }
+        
+        final role = userData['role'] as String?;
+        final isActive = userData['isActive'] as bool? ?? true;
 
         if (isActive) {
           return user; // Allow active users to proceed
@@ -140,9 +153,21 @@ class AuthService {
       final user = userCredential.user;
       if (user != null) {
         final userDoc =
-            await _firestore.collection('users').doc(user.uid).get();
-        final role = userDoc['role'] as String?;
-        final isActive = userDoc['isActive'] as bool? ?? true;
+            await _firestore.collection(DbCollections.users).doc(user.uid).get();
+        
+        if (!userDoc.exists) {
+          debugPrint('User document does not exist in Firestore');
+          return null;
+        }
+        
+        final userData = userDoc.data();
+        if (userData == null) {
+          debugPrint('User document data is null');
+          return null;
+        }
+        
+        final role = userData['role'] as String?;
+        final isActive = userData['isActive'] as bool? ?? true;
 
         if (isActive) {
           return user; // Allow active users to proceed
@@ -153,7 +178,7 @@ class AuthService {
       }
       return null;
     } catch (e) {
-      debugPrint('Error during phone sign-in: $e');
+      debugPrint('Error fetching user role: $e');
       return null;
     }
   }
@@ -162,8 +187,20 @@ class AuthService {
   Future<String?> getRole(String uid) async {
     try {
       DocumentSnapshot userDoc =
-          await _firestore.collection('users').doc(uid).get();
-      return userDoc['role'] as String?;
+          await _firestore.collection(DbCollections.users).doc(uid).get();
+      
+      if (!userDoc.exists) {
+        debugPrint('User document does not exist in Firestore');
+        return null;
+      }
+      
+      final userData = userDoc.data() as Map<String, dynamic>?;
+      if (userData == null) {
+        debugPrint('User document data is null');
+        return null;
+      }
+      
+      return userData['role'] as String?;
     } catch (e) {
       debugPrint('Error fetching user role: $e');
       return null;
@@ -173,7 +210,10 @@ class AuthService {
   // Deactivate a user
   Future<void> deactivateUser(String uid) async {
     try {
-      await _firestore.collection('users').doc(uid).update({'isActive': false});
+      await _firestore
+          .collection(DbCollections.users)
+          .doc(uid)
+          .update({'isActive': false});
       debugPrint("User deactivated successfully!");
     } catch (e) {
       debugPrint('Error deactivating user: $e');
@@ -183,7 +223,10 @@ class AuthService {
   // Reactivate a user
   Future<void> reactivateUser(String uid) async {
     try {
-      await _firestore.collection('users').doc(uid).update({'isActive': true});
+      await _firestore
+          .collection(DbCollections.users)
+          .doc(uid)
+          .update({'isActive': true});
       debugPrint("User reactivated successfully!");
     } catch (e) {
       debugPrint('Error reactivating user: $e');

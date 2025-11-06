@@ -3,12 +3,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../modules/models/ticket_file.dart';
 import '../modules/models/ticket.dart';
 import '../modules/models/user.dart';
+import '../modules/models/company.dart';
+import '../config/db_collections.dart';
+import '../config/enums/payment_methods.dart';
 
 class DataService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   static Stream<List<User>> getUsers() {
-    return _firestore.collection('users').snapshots().map((snapshot) {
+    return _firestore
+        .collection(DbCollections.users)
+        .snapshots()
+        .map((snapshot) {
       return snapshot.docs.map((doc) {
         return User.fromJson(doc.data(), doc.id);
       }).toList();
@@ -17,7 +23,7 @@ class DataService {
 
   static Future<List<String>> getUserCompany(String userId) async {
     return List<String>.from(
-      (await _firestore.collection('users').doc(userId).get())
+      (await _firestore.collection(DbCollections.users).doc(userId).get())
               .data()?['companies'] ??
           [],
     );
@@ -25,11 +31,10 @@ class DataService {
 
   static Future<void> updateUser(User user) async {
     try {
-      await _firestore.collection('users').doc(user.id).update({
+      await _firestore.collection(DbCollections.users).doc(user.id).update({
         'username': user.username,
         'email': user.email,
         'phoneNumber': user.phoneNumber,
-        // Add other fields you want to be updatable
         'role': user.role.toString(),
         'paymentMethods': user.paymentMethods.map((e) => e.toString()).toList(),
         'companies': user.companies,
@@ -41,7 +46,10 @@ class DataService {
   }
 
   static Stream<List<Ticket>> getAllTickets() {
-    return _firestore.collection('tickets').snapshots().map((snapshot) {
+    return _firestore
+        .collection(DbCollections.tickets)
+        .snapshots()
+        .map((snapshot) {
       return snapshot.docs.map((doc) {
         return Ticket.fromJson(
           json: doc.data(),
@@ -57,7 +65,7 @@ class DataService {
     required String publisher,
   }) {
     return _firestore
-        .collection('tickets')
+        .collection(DbCollections.tickets)
         .where('userId', isEqualTo: userId)
         .orderBy('createdDate', descending: true)
         .snapshots()
@@ -75,7 +83,7 @@ class DataService {
   static Stream<Ticket> getTicketWithFiles(Ticket ticket) {
     List<TicketFile> files = [];
     return _firestore
-        .collection('tickets')
+        .collection(DbCollections.tickets)
         .doc(ticket.ticketId)
         .collection('files')
         .orderBy('uploadedAt', descending: true)
@@ -92,7 +100,7 @@ class DataService {
 
   static Stream<List<Map<String, String>>> getTicketFiles(String ticketId) {
     return _firestore
-        .collection('tickets')
+        .collection(DbCollections.tickets)
         .doc(ticketId)
         .collection('files')
         .snapshots()
@@ -100,7 +108,7 @@ class DataService {
       return snapshot.docs.map((doc) {
         final data = doc.data();
         return {
-          'fileId': doc.id, // Ensure fileId is included here
+          'fileId': doc.id,
           'url': data['url'] as String,
           'fileName': data['fileName'] as String,
         };
@@ -111,7 +119,7 @@ class DataService {
   static Stream<List<Map<String, dynamic>>> getFileComments(
       String ticketId, String fileId) {
     return _firestore
-        .collection('tickets')
+        .collection(DbCollections.tickets)
         .doc(ticketId)
         .collection('files')
         .doc(fileId)
@@ -127,7 +135,7 @@ class DataService {
   static Future<void> addComment(
       String ticketId, String fileId, String message, String senderId) async {
     final docRef = _firestore
-        .collection('tickets')
+        .collection(DbCollections.tickets)
         .doc(ticketId)
         .collection('files')
         .doc(fileId);
@@ -142,5 +150,124 @@ class DataService {
       ]),
       'isThereMsgNotRead': true,
     });
+  }
+
+  // Company methods
+  static Stream<List<Company>> getCompanies() {
+    return _firestore.collection('companies').snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return Company.fromJson(doc.data(), doc.id);
+      }).toList();
+    });
+  }
+
+  static Future<void> createCompany(Company company) async {
+    try {
+      await _firestore
+          .collection('companies')
+          .doc(company.id)
+          .set(company.toJson());
+    } catch (e) {
+      throw Exception('Failed to create company: $e');
+    }
+  }
+
+  static Future<void> updateCompany(Company company) async {
+    try {
+      await _firestore.collection('companies').doc(company.id).update({
+        'name': company.name,
+        'paymentMethods':
+            company.paymentMethods.map((pm) => pm.toString()).toList(),
+        'isActive': company.isActive,
+      });
+
+      // If company is deactivated, deactivate all its users
+      if (!company.isActive) {
+        await deactivateCompanyUsers(company.name);
+      }
+    } catch (e) {
+      throw Exception('Failed to update company: $e');
+    }
+  }
+
+  static Future<void> deleteCompany(String companyId) async {
+    try {
+      await _firestore.collection('companies').doc(companyId).delete();
+    } catch (e) {
+      throw Exception('Failed to delete company: $e');
+    }
+  }
+
+  // Deactivate all users belonging to a company
+  static Future<void> deactivateCompanyUsers(String companyName) async {
+    try {
+      final usersSnapshot = await _firestore
+          .collection(DbCollections.users)
+          .where('companies', arrayContains: companyName)
+          .get();
+
+      final batch = _firestore.batch();
+      for (var doc in usersSnapshot.docs) {
+        batch.update(doc.reference, {'isActive': false});
+      }
+      await batch.commit();
+    } catch (e) {
+      throw Exception('Failed to deactivate company users: $e');
+    }
+  }
+
+  // When payment method is added to company, update all users in that company
+  static Future<void> syncPaymentMethodsToCompanyUsers(
+      String companyName, List<String> paymentMethods) async {
+    try {
+      final usersSnapshot = await _firestore
+          .collection(DbCollections.users)
+          .where('companies', arrayContains: companyName)
+          .get();
+
+      final batch = _firestore.batch();
+      for (var doc in usersSnapshot.docs) {
+        final currentPaymentMethods =
+            List<String>.from(doc.data()['paymentMethods'] ?? []);
+        final newPaymentMethods =
+            paymentMethods.map((pm) => pm.toString()).toList();
+
+        // Merge: add new payment methods that don't exist
+        for (var pm in newPaymentMethods) {
+          if (!currentPaymentMethods.contains(pm)) {
+            currentPaymentMethods.add(pm);
+          }
+        }
+
+        batch.update(doc.reference, {'paymentMethods': currentPaymentMethods});
+      }
+      await batch.commit();
+    } catch (e) {
+      throw Exception('Failed to sync payment methods: $e');
+    }
+  }
+
+  // Search users by username or email
+  static Future<List<User>> searchUsers(String query) async {
+    try {
+      final snapshot = await _firestore
+          .collection(DbCollections.users)
+          .where('isActive', isEqualTo: true)
+          .get();
+
+      final allUsers = snapshot.docs
+          .map((doc) => User.fromJson(doc.data(), doc.id))
+          .toList();
+
+      if (query.isEmpty) return allUsers;
+
+      final lowerQuery = query.toLowerCase();
+      return allUsers.where((user) {
+        return user.username.toLowerCase().contains(lowerQuery) ||
+            user.email.toLowerCase().contains(lowerQuery);
+      }).toList();
+    } catch (e) {
+      throw Exception('Failed to search users: $e');
+    }
   }
 }

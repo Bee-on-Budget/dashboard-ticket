@@ -7,6 +7,7 @@ import 'src/modules/screens/merged_screen.dart';
 import 'src/modules/screens/create_user_screen.dart';
 import 'src/modules/screens/tickets_screen.dart';
 import 'src/modules/screens/login_screen.dart';
+import 'src/modules/screens/profile_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,6 +36,7 @@ class MyApp extends StatelessWidget {
         '/createUser': (context) => CreateUserScreen(),
         '/tickets': (context) => TicketsScreen(),
         '/merged': (context) => MergedScreen(),
+        '/profile': (context) => const ProfileScreen(),
       },
     );
   }

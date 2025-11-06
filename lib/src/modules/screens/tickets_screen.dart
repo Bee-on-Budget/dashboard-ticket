@@ -8,6 +8,7 @@ import '../../config/enums/ticket_status.dart';
 import '../models/ticket_file.dart';
 import 'comment_screen.dart';
 import '../../service/data_service.dart';
+import '../../config/db_collections.dart';
 
 const Color primaryColor = Color(0xFF44564A);
 const Color backgroundColor = Color(0xFFF5F5F5);
@@ -66,7 +67,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
   Future<void> _fetchAdmins() async {
     try {
       final adminSnapshot = await FirebaseFirestore.instance
-          .collection('users')
+          .collection(DbCollections.users)
           .where('role', whereIn: ['admin', 'Admin'])
           .where('isActive', isEqualTo: true) // Add this line
           .get();
@@ -90,7 +91,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
   Future<void> _fetchUsers() async {
     try {
       final userSnapshot = await FirebaseFirestore.instance
-          .collection('users')
+          .collection(DbCollections.users)
           .where('isActive', isEqualTo: true) // Add this line
           .get();
 
@@ -328,7 +329,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
 
   Stream<List<Map<String, dynamic>>> _getFilteredTicketsStream() async* {
     // Base query construction
-    Query query = FirebaseFirestore.instance.collection('tickets');
+    Query query = FirebaseFirestore.instance.collection(DbCollections.tickets);
 
     // Server-side filters
     if (widget.userId != null) {
@@ -361,7 +362,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
     // Parallel file loading
     final filesFutures = ticketsSnapshot.docs.map((ticketDoc) async {
       final filesSnapshot = await FirebaseFirestore.instance
-          .collection('tickets')
+          .collection(DbCollections.tickets)
           .doc(ticketDoc.id)
           .collection('files')
           .orderBy('uploadedAt', descending: true)
@@ -833,7 +834,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
 
   void _assignAdminToTicket(String ticketId, String? adminId) {
     FirebaseFirestore.instance
-        .collection('tickets')
+        .collection(DbCollections.tickets)
         .doc(ticketId)
         .update({'assignedAdminId': adminId}).then((_) {
       _showSnackBar(adminId == null
@@ -846,7 +847,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
 
   void _updateTicketStatus(String ticketId, String newStatus) {
     FirebaseFirestore.instance
-        .collection('tickets')
+        .collection(DbCollections.tickets)
         .doc(ticketId)
         .update({'status': newStatus}).then((_) {
       setState(() {
@@ -862,7 +863,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
 
   void _saveReference(String ticketId, String reference) {
     FirebaseFirestore.instance
-        .collection('tickets')
+        .collection(DbCollections.tickets)
         .doc(ticketId)
         .update({'reference': reference}).then((_) {
       setState(() {

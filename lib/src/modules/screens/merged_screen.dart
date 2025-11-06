@@ -6,6 +6,7 @@ import 'home_screen.dart';
 import 'create_user_screen.dart';
 import 'tickets_screen.dart';
 import 'profile_screen.dart';
+import 'companies_screen.dart';
 
 class MergedScreen extends StatefulWidget {
   const MergedScreen({super.key});
@@ -30,6 +31,7 @@ class MergedScreenState extends State<MergedScreen> {
     CreateUserScreen(),
     TicketsScreen(),
     ProfileScreen(),
+    CompaniesScreen(),
   ];
 
   @override
@@ -105,8 +107,9 @@ class MergedScreenState extends State<MergedScreen> {
               _buildDrawerItem(Icons.person_add, 'Create User', 1),
               _buildDrawerItem(Icons.list, 'Tickets', 2),
               _buildDrawerItem(Icons.person, 'Profile', 3),
+              _buildDrawerItem(Icons.business, 'Companies', 4),
               const Divider(color: Colors.white54),
-              _buildDrawerItem(Icons.logout, 'Logout', 4, isLogout: true),
+              _buildDrawerItem(Icons.logout, 'Logout', 5, isLogout: true),
             ],
           ),
         ),

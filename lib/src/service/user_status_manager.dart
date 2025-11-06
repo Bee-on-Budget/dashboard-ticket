@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../config/db_collections.dart';
 
 class UserStatusManager extends StatefulWidget {
   final String userId;
@@ -78,7 +79,7 @@ class _UserStatusManagerState extends State<UserStatusManager> {
   Future<void> _toggleStatus() async {
     try {
       await FirebaseFirestore.instance
-          .collection('users')
+          .collection(DbCollections.users)
           .doc(_userIdController.text) // Use the edited ID
           .update({'isActive': !_currentStatus});
 
