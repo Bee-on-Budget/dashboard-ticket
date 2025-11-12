@@ -30,10 +30,13 @@ class _LoginScreenState extends State<LoginScreen> {
               .signInWithPhoneAndPassword(identifier, password);
 
       if (user != null) {
-        // Navigate to merged screen after successful login
-        if (mounted) {
-          Navigator.pushReplacementNamed(context, '/merged');
-        }
+        // Navigate to merged screen after successful login with a small delay
+        // to ensure auth state has propagated
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            Navigator.pushReplacementNamed(context, '/merged');
+          }
+        });
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
