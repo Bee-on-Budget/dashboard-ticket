@@ -30,8 +30,10 @@ class _LoginScreenState extends State<LoginScreen> {
               .signInWithPhoneAndPassword(identifier, password);
 
       if (user != null) {
-        // Navigation is handled by AuthCheck in main.dart via stream
-        // No need to navigate here, as the auth state change will trigger the rebuild
+        // Navigate to merged screen after successful login
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/merged');
+        }
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

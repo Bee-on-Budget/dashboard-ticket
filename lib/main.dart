@@ -42,14 +42,9 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class AuthCheck extends StatefulWidget {
+class AuthCheck extends StatelessWidget {
   const AuthCheck({super.key});
 
-  @override
-  State<AuthCheck> createState() => _AuthCheckState();
-}
-
-class _AuthCheckState extends State<AuthCheck> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
@@ -58,27 +53,8 @@ class _AuthCheckState extends State<AuthCheck> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (snapshot.hasData && snapshot.data != null) {
-          // Check user role and active status
-          return FutureBuilder<String?>(
-            future: AuthService().getRole(snapshot.data!.uid),
-            builder: (context, roleSnapshot) {
-              if (roleSnapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (roleSnapshot.hasData) {
-                final role = roleSnapshot.data;
-                if (role == 'admin') {
-                  return MergedScreen();
-                } else {
-                  return HomeScreen();
-                }
-              } else {
-                // If role fetch fails, default to login
-                return const LoginScreen();
-              }
-            },
-          );
+        if (snapshot.hasData) {
+          return MergedScreen(); // Keep your existing functionality
         } else {
           return const LoginScreen();
         }
