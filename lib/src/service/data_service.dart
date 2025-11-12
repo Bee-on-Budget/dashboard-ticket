@@ -154,7 +154,10 @@ class DataService {
 
   // Company methods
   static Stream<List<Company>> getCompanies() {
-    return _firestore.collection('companies').snapshots().map((snapshot) {
+    return _firestore
+        .collection(DbCollections.companies)
+        .snapshots()
+        .map((snapshot) {
       return snapshot.docs.map((doc) {
         return Company.fromJson(doc.data(), doc.id);
       }).toList();
@@ -164,7 +167,7 @@ class DataService {
   static Future<void> createCompany(Company company) async {
     try {
       await _firestore
-          .collection('companies')
+          .collection(DbCollections.companies)
           .doc(company.id)
           .set(company.toJson());
     } catch (e) {
@@ -174,7 +177,10 @@ class DataService {
 
   static Future<void> updateCompany(Company company) async {
     try {
-      await _firestore.collection('companies').doc(company.id).update({
+      await _firestore
+          .collection(DbCollections.companies)
+          .doc(company.id)
+          .update({
         'name': company.name,
         'paymentMethods':
             company.paymentMethods.map((pm) => pm.toString()).toList(),
@@ -192,7 +198,10 @@ class DataService {
 
   static Future<void> deleteCompany(String companyId) async {
     try {
-      await _firestore.collection('companies').doc(companyId).delete();
+      await _firestore
+          .collection(DbCollections.companies)
+          .doc(companyId)
+          .delete();
     } catch (e) {
       throw Exception('Failed to delete company: $e');
     }

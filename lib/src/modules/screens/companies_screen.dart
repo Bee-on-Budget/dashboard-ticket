@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../models/company.dart';
@@ -52,18 +53,47 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
     }
   }
 
+  double? _getItemOffset(BuildContext context, {double alignment = 0.0}) {
+    final renderObject = context.findRenderObject();
+    if (renderObject == null || !renderObject.attached) {
+      return null;
+    }
+
+    final RenderAbstractViewport? viewport =
+        RenderAbstractViewport.of(renderObject);
+    final ScrollableState? scrollable = Scrollable.of(context);
+
+    if (viewport == null || scrollable == null) {
+      return null;
+    }
+
+    return viewport.getOffsetToReveal(renderObject, alignment).offset;
+  }
+
   void _scrollToExpandedItem(String companyId) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_itemKeys.containsKey(companyId)) {
         final key = _itemKeys[companyId]!;
         final context = key.currentContext;
         if (context != null) {
-          Scrollable.ensureVisible(
-            context,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-            alignment: 0.1,
-          );
+          final ScrollableState? scrollable = Scrollable.of(context);
+          final double? itemCenterOffset = _getItemOffset(context, alignment: 0.5);
+          if (scrollable != null && itemCenterOffset != null) {
+            final double currentOffset = _scrollController.position.pixels;
+            final double viewportExtent = _scrollController.position.viewportDimension;
+            final double itemTopOffset = itemCenterOffset - viewportExtent / 2;
+
+            if ((itemTopOffset - currentOffset).abs() > 1.0) {
+              _scrollController.animateTo(
+                itemTopOffset.clamp(
+                  _scrollController.position.minScrollExtent,
+                  _scrollController.position.maxScrollExtent,
+                ),
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+              );
+            }
+          }
         }
       }
     });

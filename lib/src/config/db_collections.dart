@@ -10,7 +10,7 @@ class DbCollections {
   static String get users => useTestCollections ? 'users_test' : 'users';
 
   // Companies collection
-  static String get companies => useTestCollections ? 'companies' : 'companies';
+  static String get companies => useTestCollections ? 'companies_test' : 'companies';
 
   static String collection(String baseName) {
     return useTestCollections ? '${baseName}_test' : baseName;

@@ -61,7 +61,7 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
 
       // Save company with additional fields
       await FirebaseFirestore.instance
-          .collection('companies')
+          .collection(DbCollections.companies)
           .doc(companyId)
           .set({
         ...company.toJson(),

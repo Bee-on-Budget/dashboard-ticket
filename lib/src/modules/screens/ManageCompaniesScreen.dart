@@ -24,7 +24,7 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
 
   Stream<List<Company>> _getCompaniesStream() {
     return FirebaseFirestore.instance
-        .collection('companies')
+        .collection(DbCollections.companies)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs
@@ -121,7 +121,7 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
                         .toList();
 
                     await FirebaseFirestore.instance
-                        .collection('companies')
+                        .collection(DbCollections.companies)
                         .doc(company.id)
                         .update({
                       'name': nameController.text.trim(),
@@ -278,7 +278,7 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
       
       // Update company status
       await FirebaseFirestore.instance
-          .collection('companies')
+          .collection(DbCollections.companies)
           .doc(company.id)
           .update({'isActive': newStatus});
 

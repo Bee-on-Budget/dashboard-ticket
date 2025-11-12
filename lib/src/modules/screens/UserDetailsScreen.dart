@@ -192,7 +192,7 @@ class _AbsolutelyVisibleUserDetailsScreenState
     try {
       // Step 1: Get the company document
       final companiesSnapshot = await FirebaseFirestore.instance
-          .collection('companies')
+          .collection(DbCollections.companies)
           .where('name', isEqualTo: companyName)
           .get();
 

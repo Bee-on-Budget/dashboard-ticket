@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:excel/excel.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../config/enums/ticket_status.dart';
 import '../models/ticket_file.dart';
 import 'comment_screen.dart';
@@ -48,6 +51,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
     'Need Re-work'
   ];
   Timer? _debounce;
+  bool _isExporting = false;
 
   @override
   void initState() {
@@ -69,7 +73,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
       final adminSnapshot = await FirebaseFirestore.instance
           .collection(DbCollections.users)
           .where('role', whereIn: ['admin', 'Admin'])
-          .where('isActive', isEqualTo: true) // Add this line
+          .where('isActive', isEqualTo: true)
           .get();
 
       if (mounted) {
@@ -92,7 +96,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
     try {
       final userSnapshot = await FirebaseFirestore.instance
           .collection(DbCollections.users)
-          .where('isActive', isEqualTo: true) // Add this line
+          .where('isActive', isEqualTo: true)
           .get();
 
       setState(() {
@@ -138,6 +142,186 @@ class _TicketsScreenState extends State<TicketsScreen> {
       });
     } else {
       Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _exportToExcel(List<Map<String, dynamic>> tickets) async {
+    if (_isExporting) return;
+
+    setState(() {
+      _isExporting = true;
+    });
+
+    try {
+      var excel = Excel.createExcel();
+      Sheet sheetObject = excel['Tickets'];
+
+      // Add headers - include Payment Methods
+      List<String> headers = [
+        'Title',
+        'Reference',
+        'Reference ID',
+        'Description',
+        'Status',
+        'Published By',
+        'Company',
+        'Payment Methods', // New column for payment methods
+        'Assigned Admin',
+        'Created Date',
+        'Latest Upload Date',
+        'Attachments'
+      ];
+      CellStyle headerStyle = CellStyle(
+        bold: true,
+        backgroundColorHex: ExcelColor.fromHexString('#44564A'),
+        fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
+      );
+
+      for (int i = 0; i < headers.length; i++) {
+        var cell = sheetObject
+            .cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
+        cell.value = TextCellValue(headers[i]);
+        cell.cellStyle = headerStyle;
+      }
+
+      // Add data rows
+      for (int i = 0; i < tickets.length; i++) {
+        final ticket = tickets[i];
+        final ticketId = ticket['id'];
+
+        // Fetch attachments for this ticket
+        List<String> attachmentNames = [];
+        try {
+          final filesSnapshot = await FirebaseFirestore.instance
+              .collection(DbCollections.tickets)
+              .doc(ticketId)
+              .collection('files')
+              .get();
+
+          attachmentNames = filesSnapshot.docs
+              .map(
+                  (doc) => doc.data()['fileName']?.toString() ?? 'Unknown File')
+              .toList();
+        } catch (e) {
+          attachmentNames = ['Error loading files'];
+        }
+
+        String publisherName = users[ticket['userId']] ?? 'Unknown';
+        String companyName = userCompanies[ticket['userId']]?.isNotEmpty == true
+            ? userCompanies[ticket['userId']]!.join(', ')
+            : 'N/A';
+
+        // NEW: Fetch payment methods for the company
+        String paymentMethods = 'N/A';
+        if (userCompanies[ticket['userId']]?.isNotEmpty == true) {
+          try {
+            // Get the first company (you might want to adjust this logic if a user can belong to multiple companies)
+            final companyName = userCompanies[ticket['userId']]!.first;
+
+            // Query Firestore for the company document
+            final companySnapshot = await FirebaseFirestore.instance
+                .collection(DbCollections.companies)
+                .where('name', isEqualTo: companyName)
+                .limit(1)
+                .get();
+
+            if (companySnapshot.docs.isNotEmpty) {
+              final companyData = companySnapshot.docs.first.data();
+              final List<dynamic> paymentMethodsList =
+                  companyData['paymentMethods'] ?? [];
+
+              if (paymentMethodsList.isNotEmpty) {
+                paymentMethods = paymentMethodsList
+                    .map((method) => method.toString())
+                    .join(', ');
+              } else {
+                paymentMethods = 'No payment methods';
+              }
+            }
+          } catch (e) {
+            debugPrint('Error fetching payment methods: $e');
+            paymentMethods = 'Error loading payment methods';
+          }
+        }
+
+        String assignedAdminName = 'Unassigned';
+        if (ticket['assignedAdminId'] != null) {
+          final admin = admins.firstWhere(
+            (a) => a['id'] == ticket['assignedAdminId'],
+            orElse: () => {'name': 'Unknown Admin'},
+          );
+          assignedAdminName = admin['name'] as String;
+        }
+
+        String createdDate = ticket['createdDate'] != null
+            ? DateFormat('MMM dd, yyyy - HH:mm')
+                .format((ticket['createdDate'] as Timestamp).toDate())
+            : 'N/A';
+
+        String latestUploadDate = ticket['latestUploadDate'] != null
+            ? DateFormat('MMM dd, yyyy - HH:mm')
+                .format(ticket['latestUploadDate'] as DateTime)
+            : 'N/A';
+
+        String attachments = attachmentNames.isEmpty
+            ? 'No attachments'
+            : attachmentNames.join('; ');
+
+        List<dynamic> rowData = [
+          ticket['title'] ?? 'No Title',
+          ticket['reference'] ?? 'N/A',
+          ticket['ref_id'] ?? 'N/A',
+          ticket['description'] ?? 'No Description',
+          ticket['status'] ?? 'No Status',
+          publisherName,
+          companyName,
+          paymentMethods, // Add payment methods here
+          assignedAdminName,
+          createdDate,
+          latestUploadDate,
+          attachments,
+        ];
+
+        for (int j = 0; j < rowData.length; j++) {
+          var cell = sheetObject.cell(
+              CellIndex.indexByColumnRow(columnIndex: j, rowIndex: i + 1));
+          cell.value = TextCellValue(rowData[j].toString());
+        }
+      }
+
+      // Auto-fit columns
+      for (int i = 0; i < headers.length; i++) {
+        sheetObject.setColumnWidth(i, 20);
+      }
+
+      // Save file
+      var fileBytes = excel.save();
+      if (fileBytes != null) {
+        final directory = await getApplicationDocumentsDirectory();
+        final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+        final statusFilter =
+            selectedFilterValue != null ? '_${selectedFilterValue}' : '_All';
+        final filePath =
+            '${directory.path}/tickets_export$statusFilter$timestamp.xlsx';
+
+        File(filePath)
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(fileBytes);
+
+        _showSnackBar('Excel file exported successfully to: $filePath');
+
+        // Optional: Open the file location
+        if (Platform.isAndroid || Platform.isIOS) {
+          _showSnackBar('File saved to Documents folder');
+        }
+      }
+    } catch (e) {
+      _showSnackBar('Failed to export Excel: $e');
+      debugPrint('Export error: $e');
+    } finally {
+      setState(() {
+        _isExporting = false;
+      });
     }
   }
 
@@ -191,7 +375,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.4,
+                  width: MediaQuery.of(context).size.width * 0.35,
                   child: TextField(
                     controller: searchController,
                     decoration: InputDecoration(
@@ -224,6 +408,17 @@ class _TicketsScreenState extends State<TicketsScreen> {
                   icon: const Icon(Icons.clear_all, color: primaryColor),
                   onPressed: _clearAllFilters,
                 ),
+                IconButton(
+                  icon: _isExporting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.download, color: primaryColor),
+                  onPressed: _isExporting ? null : _exportCurrentView,
+                  tooltip: 'Export to Excel',
+                ),
               ],
             ),
             if (selectedDateRange != null)
@@ -241,6 +436,16 @@ class _TicketsScreenState extends State<TicketsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _exportCurrentView() async {
+    // Get the current filtered tickets
+    final tickets = await _getFilteredTicketsStream().first;
+    if (tickets.isEmpty) {
+      _showSnackBar('No tickets to export');
+      return;
+    }
+    await _exportToExcel(tickets);
   }
 
   Widget _buildStatusDropdown() {
@@ -340,16 +545,16 @@ class _TicketsScreenState extends State<TicketsScreen> {
     }
     if (selectedDateRange != null) {
       // Convert dates to UTC and adjust for proper range filtering
-      final startDate = DateTime(selectedDateRange!.start.year, 
-                                selectedDateRange!.start.month, 
-                                selectedDateRange!.start.day);
-      final endDate = DateTime(selectedDateRange!.end.year, 
-                              selectedDateRange!.end.month, 
-                              selectedDateRange!.end.day, 23, 59, 59);
-      
+      final startDate = DateTime(selectedDateRange!.start.year,
+          selectedDateRange!.start.month, selectedDateRange!.start.day);
+      final endDate = DateTime(selectedDateRange!.end.year,
+          selectedDateRange!.end.month, selectedDateRange!.end.day, 23, 59, 59);
+
       query = query
-          .where('createdDate', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
-          .where('createdDate', isLessThanOrEqualTo: Timestamp.fromDate(endDate));
+          .where('createdDate',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+          .where('createdDate',
+              isLessThanOrEqualTo: Timestamp.fromDate(endDate));
     }
 
     // Get tickets
@@ -367,13 +572,14 @@ class _TicketsScreenState extends State<TicketsScreen> {
           .collection('files')
           .orderBy('uploadedAt', descending: true)
           .get();
-      
+
       DateTime? latestUploadDate;
       if (filesSnapshot.docs.isNotEmpty) {
         final latestFile = filesSnapshot.docs.first;
-        latestUploadDate = (latestFile.data()['uploadedAt'] as Timestamp?)?.toDate();
+        latestUploadDate =
+            (latestFile.data()['uploadedAt'] as Timestamp?)?.toDate();
       }
-      
+
       return {
         'ticketId': ticketDoc.id,
         'fileCount': filesSnapshot.docs.length,
@@ -546,7 +752,8 @@ class _TicketsScreenState extends State<TicketsScreen> {
                                 ),
                               ),
                             const SizedBox(height: 4),
-                            if (ticket['fileIds'] != null && (ticket['fileIds'] as List).isNotEmpty)
+                            if (ticket['fileIds'] != null &&
+                                (ticket['fileIds'] as List).isNotEmpty)
                               Row(
                                 children: [
                                   Icon(
@@ -629,7 +836,8 @@ class _TicketsScreenState extends State<TicketsScreen> {
     if (selectedTicketData == null) return Container();
 
     String? currentUserUid = FirebaseAuth.instance.currentUser?.uid;
-    bool isAssignedToCurrentUser = selectedTicketData?['assignedAdminId'] == currentUserUid;
+    bool isAssignedToCurrentUser =
+        selectedTicketData?['assignedAdminId'] == currentUserUid;
 
     return StreamBuilder<List<Map<String, String>>>(
       stream: DataService.getTicketFiles(selectedTicketId!),

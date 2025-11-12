@@ -1,0 +1,844 @@
+{
+  "export_metadata": {
+    "timestamp": "2025-11-12T14:29:39.829",
+    "project_id": "ticket-app-7914a",
+    "total_collections": 4,
+    "total_documents": 82
+  },
+  "collections": {
+    "users": {
+      "document_count": 10,
+      "documents": {
+        "1BRMrKKMniOnrqHCUGpzOa9Wmww1": {
+          "uid": "1BRMrKKMniOnrqHCUGpzOa9Wmww1",
+          "email": "ooooomarr@yahoo.com",
+          "role": "admin",
+          "paymentMethods": [],
+          "createdAt": "2025-09-18T10:52:22.733",
+          "companies": [
+            "Power International Freight (L.L.C)"
+          ],
+          "username": "Omar Abdul Qader",
+          "isActive": false
+        },
+        "5ori7beD8gdMir8WQulBGs3k6cJ3": {
+          "identifier": "norman.sanchez@morph-accounting.ae",
+          "email": "norman.sanchez@morph-accounting.ae",
+          "username": "Norman Sanchez",
+          "companies": [
+            "Morph Accounting"
+          ],
+          "role": "Admin",
+          "isActive": true,
+          "createdAt": "2025-04-06T08:41:40.042",
+          "paymentMethods": [],
+          "uid": "5ori7beD8gdMir8WQulBGs3k6cJ3"
+        },
+        "7QSjGh6kWveQwdZVNat8m5pWq7Q2": {
+          "createdAt": "2025-10-30T09:55:03.134",
+          "role": "user",
+          "uid": "7QSjGh6kWveQwdZVNat8m5pWq7Q2",
+          "isActive": true,
+          "email": "dina.wasfy@agilehome.ae",
+          "username": "Dina Wasfy",
+          "companies": [
+            "Agile Home Building Maintenance L.L.C"
+          ],
+          "paymentMethods": []
+        },
+        "9pRreE1bqrXDWN6AmDixNGxSTMG3": {
+          "paymentMethods": [],
+          "companies": [
+            "Morph Test"
+          ],
+          "isActive": true,
+          "role": "admin",
+          "username": "mohammedtest",
+          "email": "mouh1998s@gmail.com",
+          "uid": "9pRreE1bqrXDWN6AmDixNGxSTMG3",
+          "createdAt": "2025-10-28T11:04:54.588"
+        },
+        "CkpyzLrEIZNv6UXjPc9302UJ8cU2": {
+          "role": "admin",
+          "companies": [
+            "Morph Test"
+          ],
+          "createdAt": "2025-09-13T16:40:21.143",
+          "isActive": true,
+          "paymentMethods": [],
+          "username": "MohammedTest",
+          "email": "MohammedTest@morph-accounting.ae",
+          "uid": "CkpyzLrEIZNv6UXjPc9302UJ8cU2"
+        },
+        "Di3YwGz9qvSlK4HwWqlbOWQslGy2": {
+          "role": "user",
+          "createdAt": "2025-05-19T15:22:10.713",
+          "companies": [
+            "Morph Test"
+          ],
+          "email": "bilal.zenatee@gmail.com",
+          "paymentMethods": [],
+          "username": "Belal Test",
+          "isActive": true,
+          "uid": "Di3YwGz9qvSlK4HwWqlbOWQslGy2"
+        },
+        "JevUeE7DbQSXT5ncOxjR15H830F2": {
+          "uid": "JevUeE7DbQSXT5ncOxjR15H830F2",
+          "username": "Dina Wasfy",
+          "companies": [
+            "Agile Technology Solutions"
+          ],
+          "email": "Info@agiletechnology.ae",
+          "isActive": true,
+          "role": "user",
+          "paymentMethods": [],
+          "createdAt": "2025-11-06T11:14:52.955"
+        },
+        "THAxtdlMhHchyiZarET2jde2": {
+          "username": "Eyad - Power International",
+          "createdAt": "2025-08-27T13:08:53.885",
+          "companies": [
+            "Power International Freight (L.L.C)"
+          ],
+          "email": "eyad@powerintlfreight.com",
+          "paymentMethods": [],
+          "isActive": true,
+          "role": "user",
+          "uid": "THAxtdlMhHchyiZarET2jde2"
+        },
+        "bX1NkQubClMOkzWyvv4S3nPl3g93": {
+          "email": "Rasha@morph-accounting.ae",
+          "paymentMethods": [],
+          "companies": [
+            "Power International Freight (L.L.C)",
+            "Agile Home Building Maintenance L.L.C",
+            "Agile Technology Solutions"
+          ],
+          "isActive": true,
+          "createdAt": "2025-11-05T10:15:05.845",
+          "role": "admin",
+          "uid": "bX1NkQubClMOkzWyvv4S3nPl3g93",
+          "username": "Rasha Abu Fayyad"
+        },
+        "rgnY7GkYreVshDYoKRNV0XNA0Ke2": {
+          "isActive": true,
+          "role": "user",
+          "createdAt": "2025-10-30T10:25:24.411",
+          "username": "Hyacinth Kate",
+          "email": "Kate.redaon@agilehome.ae",
+          "companies": [
+            "Agile Home Building Maintenance L.L.C"
+          ],
+          "paymentMethods": [],
+          "uid": "rgnY7GkYreVshDYoKRNV0XNA0Ke2"
+        }
+      }
+    },
+    "companies": {
+      "document_count": 8,
+      "documents": {
+        "agile_home_building_maintenance_llc": {
+          "name": "Agile Home Building Maintenance L.L.C",
+          "paymentMethods": [
+            "ADCB Bank",
+            "Cash on Hand",
+            "Dina Physical Card - 4876",
+            "Dina Virtual Card",
+            "Dina Virtual Card - 6877",
+            "Erwin Aguilar Card - 0910",
+            "Hyacinth Kate Card",
+            "Islam Bahr Card - 3847",
+            "Mark Dahren Card - 6840",
+            "Owner Personal Account",
+            "Payment Gateway",
+            "Unpaid"
+          ],
+          "createdAt": "2025-10-30T09:55:03.134",
+          "isActive": true
+        },
+        "agile_technology_solutions": {
+          "name": "Agile Technology Solutions",
+          "paymentMethods": [
+            "Cash",
+            "Bank",
+            "Owner Personal Account"
+          ],
+          "createdAt": "2025-11-06T11:14:52.955",
+          "isActive": true
+        },
+        "morph_accounting": {
+          "name": "Morph Accounting",
+          "paymentMethods": [
+            "Cash",
+            "Apple Pay"
+          ],
+          "createdAt": "2025-04-06T08:41:40.042",
+          "isActive": true
+        },
+        "morph_test": {
+          "name": "Morph Test",
+          "paymentMethods": [
+            "Cash",
+            "Bank",
+            "Card",
+            "test"
+          ],
+          "createdAt": "2025-05-19T15:22:10.713",
+          "isActive": true
+        },
+        "power_international_freight_llc": {
+          "name": "Power International Freight (L.L.C)",
+          "paymentMethods": [
+            "Bank",
+            "Cash",
+            "Owner Account"
+          ],
+          "createdAt": "2025-08-27T13:08:53.885",
+          "isActive": true
+        },
+        "1762366202555": {
+          "name": "test",
+          "paymentMethods": [
+            "Card",
+            "Account",
+            "Cash",
+            "PayPal"
+          ],
+          "createdAt": "2025-11-05T20:10:02.555",
+          "isActive": true
+        },
+        "1762367374118": {
+          "isActive": true,
+          "createdAt": "2025-11-05T20:29:34.118",
+          "name": "test222",
+          "paymentMethods": [
+            "1das22dsa"
+          ]
+        },
+        "1762458927491": {
+          "isActive": true,
+          "name": "21s",
+          "paymentMethods": [
+            "sss"
+          ],
+          "createdAt": "2025-11-06T21:55:27.491"
+        }
+      }
+    },
+    "data": {
+      "document_count": 1,
+      "documents": {
+        "preferences": {
+          "titles": [
+            "Expense Invoice",
+            "Sales Invoice",
+            "Cash Movement",
+            "Other"
+          ],
+          "idx_counter": "0000000325"
+        }
+      }
+    },
+    "tickets": {
+      "document_count": 63,
+      "documents": {
+        "0xyBkd41e03VjK0OpiRT": {
+          "status": "Open",
+          "createdDate": "2025-11-11T08:23:08.935",
+          "ref_id": "0000000316",
+          "title": "Expense Invoice",
+          "paymentMethod": "ADCB Bank",
+          "description": "MAZEED PAYMENT FOR SEPTEMBER",
+          "userId": "rgnY7GkYreVshDYoKRNV0XNA0Ke2"
+        },
+        "2wgcIK53O4tFc1IBahz8": {
+          "status": "Open",
+          "description": "ENOC TOP UP",
+          "paymentMethod": "ADCB Bank",
+          "title": "Expense Invoice",
+          "assignedAdminId": "bX1NkQubClMOkzWyvv4S3nPl3g93",
+          "createdDate": "2025-11-06T11:52:24.428",
+          "ref_id": "0000000298",
+          "userId": "rgnY7GkYreVshDYoKRNV0XNA0Ke2"
+        },
+        "3QxOjiEklOCyzuilHB60": {
+          "title": "Expense Invoice",
+          "paymentMethod": "Bank",
+          "reference": "",
+          "ref_id": "0000000050",
+          "createdDate": "2025-08-27T13:11:20.379",
+          "assignedAdminId": null,
+          "description": "No Description",
+          "status": "Canceled",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2"
+        },
+        "5W7vsIWTOyEu3S8esySw": {
+          "title": "Expense Invoice",
+          "paymentMethod": "ADCB Bank",
+          "ref_id": "0000000322",
+          "userId": "rgnY7GkYreVshDYoKRNV0XNA0Ke2",
+          "description": "PRE-APPROVAL WORK PERMIT",
+          "createdDate": "2025-11-12T07:18:22.319",
+          "status": "Open"
+        },
+        "5eS47nZYEv8C9E5V0XGe": {
+          "assignedAdminId": "1BRMrKKMniOnrqHCUGpzOa9Wmww1",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "status": "Closed",
+          "title": "Expense Invoice",
+          "paymentMethod": "Bank",
+          "createdDate": "2025-09-16T14:19:57.494",
+          "description": "No Description",
+          "ref_id": "0000000186"
+        },
+        "6EQFAzqAUEduUktEhnNM": {
+          "assignedAdminId": "bX1NkQubClMOkzWyvv4S3nPl3g93",
+          "title": "Expense Invoice",
+          "description": "MONTHLY PAYMENT FOR PEMO",
+          "createdDate": "2025-11-06T11:35:09.591",
+          "userId": "rgnY7GkYreVshDYoKRNV0XNA0Ke2",
+          "paymentMethod": "ADCB Bank",
+          "ref_id": "0000000277",
+          "status": "Canceled"
+        },
+        "7VXwrJRwhJ1j0ev6OLwr": {
+          "paymentMethod": "Apple Pay",
+          "userId": "5ori7beD8gdMir8WQulBGs3k6cJ3",
+          "status": "Canceled",
+          "title": "Sales Invoice",
+          "description": "I've uploaded the requires files",
+          "createdDate": "2025-04-06T08:43:48.543",
+          "ref_id": "0000000042",
+          "assignedAdminId": "5ori7beD8gdMir8WQulBGs3k6cJ3",
+          "reference": "uae-327857"
+        },
+        "A1AB2UPyVd9bOPcumneL": {
+          "status": "Open",
+          "createdDate": "2025-11-10T11:58:05.199",
+          "paymentMethod": "ADCB Bank",
+          "ref_id": "0000000312",
+          "description": "VISA CANCELLATION",
+          "title": "Expense Invoice",
+          "userId": "rgnY7GkYreVshDYoKRNV0XNA0Ke2"
+        },
+        "ARIekIUErKWZk9XTrhlO": {
+          "description": "No Description",
+          "status": "Closed",
+          "createdDate": "2025-08-29T13:47:45.176",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "title": "Expense Invoice",
+          "ref_id": "0000000155",
+          "paymentMethod": "Bank",
+          "assignedAdminId": null
+        },
+        "AzQFlfFu3CVEjl6ySWHq": {
+          "assignedAdminId": "1BRMrKKMniOnrqHCUGpzOa9Wmww1",
+          "description": "No Description",
+          "ref_id": "0000000151",
+          "createdDate": "2025-08-29T09:21:01.528",
+          "status": "Closed",
+          "title": "Sales Invoice",
+          "paymentMethod": "Bank",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2"
+        },
+        "B1ZEznTgWW46EWBpoTHd": {
+          "title": "Expense Invoice",
+          "description": "FOOD FOR STAFF",
+          "paymentMethod": "Cash on Hand",
+          "ref_id": "0000000318",
+          "createdDate": "2025-11-11T12:05:23.107",
+          "status": "Open",
+          "userId": "rgnY7GkYreVshDYoKRNV0XNA0Ke2"
+        },
+        "BKy0FQVKeuNuAGHlYXIo": {
+          "userId": "rgnY7GkYreVshDYoKRNV0XNA0Ke2",
+          "status": "Open",
+          "description": "MATERIALS",
+          "ref_id": "0000000292",
+          "paymentMethod": "Mark Dahren Card - 6840",
+          "title": "Expense Invoice",
+          "createdDate": "2025-11-06T11:46:48.578"
+        },
+        "BfRVmWkOnPjl5RzOHLaV": {
+          "assignedAdminId": "1BRMrKKMniOnrqHCUGpzOa9Wmww1",
+          "createdDate": "2025-09-04T14:03:57.660",
+          "description": "No Description",
+          "title": "Expense Invoice",
+          "paymentMethod": "Bank",
+          "ref_id": "0000000158",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "status": "Closed"
+        },
+        "Btw14ogq8MQ7Xw99nh8m": {
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "assignedAdminId": null,
+          "title": "Sales Invoice",
+          "description": "No Description",
+          "ref_id": "0000000222",
+          "paymentMethod": "Bank",
+          "status": "Open",
+          "createdDate": "2025-10-24T07:12:04.858"
+        },
+        "CiBuuh11gyqX0M5RpQrZ": {
+          "createdDate": "2025-09-13T16:41:14.451",
+          "assignedAdminId": "1BRMrKKMniOnrqHCUGpzOa9Wmww1",
+          "status": "Closed",
+          "userId": "CkpyzLrEIZNv6UXjPc9302UJ8cU2",
+          "description": "sddsadsadsasad",
+          "title": "Sales Invoice",
+          "paymentMethod": "test",
+          "ref_id": "0000000178"
+        },
+        "DORUci0cjS2oKfOspNHG": {
+          "ref_id": "0000000306",
+          "description": "No Description",
+          "paymentMethod": "Bank",
+          "title": "Expense Invoice",
+          "userId": "JevUeE7DbQSXT5ncOxjR15H830F2",
+          "createdDate": "2025-11-10T08:25:55.856",
+          "status": "Open"
+        },
+        "DntBnHSOipnkXyW56N4A": {
+          "title": "Sales Invoice",
+          "status": "Open",
+          "paymentMethod": "Bank",
+          "createdDate": "2025-10-24T07:17:05.314",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "description": "No Description",
+          "ref_id": "0000000244"
+        },
+        "E3eGShcLyTPTmmrLhgeb": {
+          "status": "Open",
+          "paymentMethod": "ADCB Bank",
+          "description": "MONTHLY PAYMENT FOR DXB 43590X",
+          "createdDate": "2025-11-07T07:52:48.315",
+          "title": "Expense Invoice",
+          "userId": "rgnY7GkYreVshDYoKRNV0XNA0Ke2",
+          "ref_id": "0000000300"
+        },
+        "EFR0HGaFaJncAGcZmQuQ": {
+          "userId": "JevUeE7DbQSXT5ncOxjR15H830F2",
+          "status": "Open",
+          "description": "No Description",
+          "paymentMethod": "Bank",
+          "createdDate": "2025-11-07T09:48:32.888",
+          "ref_id": "0000000304",
+          "title": "Expense Invoice"
+        },
+        "F8Lz729YosfQ5MiZ3i45": {
+          "ref_id": "0000000104",
+          "paymentMethod": "Bank",
+          "description": "No Description",
+          "status": "Closed",
+          "createdDate": "2025-08-28T09:15:07.995",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "assignedAdminId": "1BRMrKKMniOnrqHCUGpzOa9Wmww1",
+          "title": "Expense Invoice"
+        },
+        "FCnMVNslVLWsWnTMOrks": {
+          "ref_id": "0000000308",
+          "title": "Expense Invoice",
+          "paymentMethod": "Erwin Aguilar Card - 0910",
+          "createdDate": "2025-11-10T08:46:27.822",
+          "status": "Open",
+          "userId": "rgnY7GkYreVshDYoKRNV0XNA0Ke2",
+          "description": "WATER FOR STAFF"
+        },
+        "H1a8oWN5ThpTyKxleSuN": {
+          "assignedAdminId": "1BRMrKKMniOnrqHCUGpzOa9Wmww1",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "title": "Sales Invoice",
+          "description": "No Description",
+          "status": "Closed",
+          "createdDate": "2025-08-28T09:29:04.826",
+          "ref_id": "0000000125",
+          "paymentMethod": "Bank"
+        },
+        "Jtvyy9SuG6oDcYmW4UrX": {
+          "title": "Sales Invoice",
+          "ref_id": "0000000200",
+          "createdDate": "2025-10-24T07:06:07.307",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "status": "Open",
+          "paymentMethod": "Bank",
+          "description": "No Description"
+        },
+        "KXhjghzux84BtMKAcjVK": {
+          "description": "No Description",
+          "assignedAdminId": "1BRMrKKMniOnrqHCUGpzOa9Wmww1",
+          "paymentMethod": "Bank",
+          "createdDate": "2025-08-28T07:42:07.615",
+          "ref_id": "0000000078",
+          "status": "Closed",
+          "title": "Sales Invoice",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2"
+        },
+        "LH9WyffUSkdjlmgDSvXA": {
+          "description": "No Description",
+          "title": "Sales Invoice",
+          "ref_id": "0000000255",
+          "paymentMethod": "Bank",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "createdDate": "2025-10-24T07:19:33.927",
+          "status": "Open"
+        },
+        "LMC645QKTlRCzgsRj4uw": {
+          "ref_id": "0000000275",
+          "status": "Open",
+          "description": "ETISALAT PAYMENT FOR 0566874000",
+          "paymentMethod": "ADCB Bank",
+          "userId": "rgnY7GkYreVshDYoKRNV0XNA0Ke2",
+          "createdDate": "2025-11-06T11:34:19.516",
+          "title": "Expense Invoice"
+        },
+        "LUhHZQDAsQS4kVbfhAGP": {
+          "userId": "JevUeE7DbQSXT5ncOxjR15H830F2",
+          "paymentMethod": "Bank",
+          "ref_id": "0000000280",
+          "description": "No Description",
+          "title": "Expense Invoice",
+          "createdDate": "2025-11-06T11:44:21.703",
+          "status": "Open"
+        },
+        "Lh7RonEp7cZESMRZ33Xt": {
+          "status": "Closed",
+          "createdDate": "2025-09-04T14:15:16.250",
+          "description": "No Description",
+          "title": "Expense Invoice",
+          "ref_id": "0000000169",
+          "paymentMethod": "Bank",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "assignedAdminId": "1BRMrKKMniOnrqHCUGpzOa9Wmww1"
+        },
+        "M4KZevUE5KWL9h4xHz8t": {
+          "status": "Open",
+          "userId": "rgnY7GkYreVshDYoKRNV0XNA0Ke2",
+          "paymentMethod": "ADCB Bank",
+          "title": "Expense Invoice",
+          "createdDate": "2025-11-10T08:46:57.416",
+          "ref_id": "0000000310",
+          "description": "BANK FEES"
+        },
+        "MlP3mXPh7v8Efw05OtiX": {
+          "paymentMethod": "Bank",
+          "createdDate": "2025-08-27T17:26:38.896",
+          "description": "No Description",
+          "title": "Sales Invoice",
+          "status": "Canceled",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "ref_id": "0000000053"
+        },
+        "MmENO55ojZX08Whn2bOK": {
+          "status": "Open",
+          "createdDate": "2025-11-06T11:46:17.203",
+          "description": "No Description",
+          "title": "Expense Invoice",
+          "userId": "JevUeE7DbQSXT5ncOxjR15H830F2",
+          "ref_id": "0000000290",
+          "paymentMethod": "Bank"
+        },
+        "STj9BhBGGxKtYqEx2lAp": {
+          "createdDate": "2025-05-19T15:24:07.633",
+          "status": "Canceled",
+          "description": "No Description",
+          "title": "Expense Invoice",
+          "paymentMethod": "Bank",
+          "userId": "Di3YwGz9qvSlK4HwWqlbOWQslGy2",
+          "ref_id": "0000000048"
+        },
+        "UAiTaYhQ0DE9N9xsZNcE": {
+          "paymentMethod": "Bank",
+          "ref_id": "0000000286",
+          "title": "Expense Invoice",
+          "userId": "JevUeE7DbQSXT5ncOxjR15H830F2",
+          "status": "Open",
+          "description": "No Description",
+          "createdDate": "2025-11-06T11:45:14.617"
+        },
+        "UO8xWK5ibXPyjJusRoQ3": {
+          "paymentMethod": "Erwin Aguilar Card - 0910",
+          "title": "Expense Invoice",
+          "createdDate": "2025-11-06T11:49:26.718",
+          "status": "Open",
+          "userId": "rgnY7GkYreVshDYoKRNV0XNA0Ke2",
+          "ref_id": "0000000296",
+          "description": "CLEANING MATERIALS"
+        },
+        "W73AQ7POqxn2KIqUZzjw": {
+          "status": "Open",
+          "userId": "rgnY7GkYreVshDYoKRNV0XNA0Ke2",
+          "createdDate": "2025-11-06T11:03:19.071",
+          "paymentMethod": "ADCB Bank",
+          "ref_id": "0000000273",
+          "title": "Expense Invoice",
+          "description": "Payment for Parking AA64199/J48052"
+        },
+        "XTQP9iPGuJGbjFlQYg2x": {
+          "ref_id": "0000000044",
+          "reference": "uae-683489",
+          "userId": "5ori7beD8gdMir8WQulBGs3k6cJ3",
+          "description": "This is sales invoice for the past three months",
+          "paymentMethod": "Cash",
+          "createdDate": "2025-04-06T08:44:24.673",
+          "status": "Canceled",
+          "title": "Sales Invoice",
+          "assignedAdminId": "5ori7beD8gdMir8WQulBGs3k6cJ3"
+        },
+        "YYyAb8O4ef1KGBzzg1rA": {
+          "ref_id": "0000000320",
+          "createdDate": "2025-11-11T19:24:18.833",
+          "title": "Expense Invoice",
+          "description": "MAZEED PAYMENT FOR OCTOBER",
+          "paymentMethod": "ADCB Bank",
+          "userId": "rgnY7GkYreVshDYoKRNV0XNA0Ke2",
+          "status": "Open"
+        },
+        "YalwDH6DJTTLb0MW3G5A": {
+          "title": "Sales Invoice",
+          "createdDate": "2025-10-24T07:14:32.625",
+          "assignedAdminId": null,
+          "description": "No Description",
+          "status": "Open",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "ref_id": "0000000233",
+          "paymentMethod": "Bank"
+        },
+        "aUocGTodbWjbVgkDjVtR": {
+          "createdDate": "2025-05-19T15:24:18.041",
+          "userId": "Di3YwGz9qvSlK4HwWqlbOWQslGy2",
+          "description": "No Description",
+          "paymentMethod": "Bank",
+          "ref_id": "0000000049",
+          "title": "Expense Invoice",
+          "status": "Canceled"
+        },
+        "amRbhzHmhbZi9gdZ8WFS": {
+          "ref_id": "0000000302",
+          "createdDate": "2025-11-07T07:53:24.087",
+          "paymentMethod": "ADCB Bank",
+          "userId": "rgnY7GkYreVshDYoKRNV0XNA0Ke2",
+          "description": "PAYMENT FOR FINES-DXB 43590X",
+          "title": "Expense Invoice",
+          "status": "Open"
+        },
+        "b7StBtUrVtwU2EMN7mUl": {
+          "ref_id": "0000000278",
+          "description": "Paid by Agile Home",
+          "createdDate": "2025-11-06T11:43:25.184",
+          "title": "Expense Invoice",
+          "userId": "JevUeE7DbQSXT5ncOxjR15H830F2",
+          "status": "Open",
+          "paymentMethod": "Cash"
+        },
+        "dmUSfofHTVTWIUjzfaQb": {
+          "title": "Expense Invoice",
+          "createdDate": "2025-11-06T11:45:46.440",
+          "status": "Open",
+          "userId": "JevUeE7DbQSXT5ncOxjR15H830F2",
+          "description": "No Description",
+          "paymentMethod": "Bank",
+          "ref_id": "0000000288"
+        },
+        "esuOqgKWoJ44kFGEa2EY": {
+          "title": "Expense Invoice",
+          "paymentMethod": "Bank",
+          "ref_id": "0000000196",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "description": "No Description",
+          "assignedAdminId": "1BRMrKKMniOnrqHCUGpzOa9Wmww1",
+          "status": "Closed",
+          "createdDate": "2025-09-17T10:26:11.023"
+        },
+        "f7FjgjOzvXXPjihZQeaa": {
+          "ref_id": "0000000198",
+          "description": "No Description",
+          "createdDate": "2025-09-24T13:24:36.251",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "status": "Closed",
+          "paymentMethod": "Bank",
+          "title": "Expense Invoice"
+        },
+        "gYm1LpI3JgE1WTJnqrkl": {
+          "paymentMethod": "Bank",
+          "assignedAdminId": "1BRMrKKMniOnrqHCUGpzOa9Wmww1",
+          "ref_id": "0000000144",
+          "status": "Closed",
+          "createdDate": "2025-08-28T17:55:06.850",
+          "description": "No Description",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "title": "Expense Invoice"
+        },
+        "iJ0fP8iB7xnIqhNVV69h": {
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "paymentMethod": "Bank",
+          "title": "Sales Invoice",
+          "description": "No Description",
+          "assignedAdminId": "1BRMrKKMniOnrqHCUGpzOa9Wmww1",
+          "ref_id": "0000000064",
+          "createdDate": "2025-08-27T18:01:50.485",
+          "status": "Closed"
+        },
+        "iLKZjTHwdgRnp5FkzGs8": {
+          "paymentMethod": "Cash",
+          "reference": "uae-158832",
+          "title": "Expense Invoice",
+          "description": "Please adjust add this invoice to the rest of the previous invoices",
+          "userId": "5ori7beD8gdMir8WQulBGs3k6cJ3",
+          "status": "Closed",
+          "ref_id": "0000000045",
+          "createdDate": "2025-04-06T08:45:31.785"
+        },
+        "ipDA9eOeHzaow0spL63K": {
+          "title": "Expense Invoice",
+          "ref_id": "0000000324",
+          "paymentMethod": "ADCB Bank",
+          "userId": "rgnY7GkYreVshDYoKRNV0XNA0Ke2",
+          "createdDate": "2025-11-12T07:46:02.048",
+          "status": "Open",
+          "description": "FACEBOOK ADS/ NOV.1-12"
+        },
+        "lkg9aAVMnYe6gojG912R": {
+          "description": "Facebook Ads",
+          "title": "Expense Invoice",
+          "userId": "rgnY7GkYreVshDYoKRNV0XNA0Ke2",
+          "createdDate": "2025-11-06T11:00:45.783",
+          "status": "Open",
+          "ref_id": "0000000271",
+          "paymentMethod": "ADCB Bank"
+        },
+        "n7x7JAklxTQXWzGbXNeW": {
+          "description": "No Description",
+          "createdDate": "2025-11-06T11:44:52.601",
+          "userId": "JevUeE7DbQSXT5ncOxjR15H830F2",
+          "paymentMethod": "Bank",
+          "ref_id": "0000000284",
+          "title": "Expense Invoice",
+          "status": "Open"
+        },
+        "oGXy87SjLo6kuXdWdemX": {
+          "createdDate": "2025-09-16T13:14:20.064",
+          "title": "Sales Invoice",
+          "paymentMethod": "Bank",
+          "status": "Closed",
+          "description": "No Description",
+          "ref_id": "0000000180",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "assignedAdminId": "1BRMrKKMniOnrqHCUGpzOa9Wmww1"
+        },
+        "ob6ItZDvOPZ8ZBj70NUO": {
+          "paymentMethod": "Erwin Aguilar Card - 0910",
+          "createdDate": "2025-11-06T11:48:01.702",
+          "ref_id": "0000000294",
+          "userId": "rgnY7GkYreVshDYoKRNV0XNA0Ke2",
+          "description": "MATERIALS",
+          "status": "Open",
+          "title": "Expense Invoice"
+        },
+        "pig9z6hrgnFtMY89qluc": {
+          "description": "No Description",
+          "status": "Closed",
+          "paymentMethod": "Bank",
+          "title": "Expense Invoice",
+          "ref_id": "0000000082",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "createdDate": "2025-08-28T09:09:20.729",
+          "assignedAdminId": "1BRMrKKMniOnrqHCUGpzOa9Wmww1"
+        },
+        "qGair80BeU5IQhMIzkH2": {
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "title": "Sales Invoice",
+          "paymentMethod": "Bank",
+          "status": "Open",
+          "description": "No Description",
+          "createdDate": "2025-10-24T07:09:16.225",
+          "ref_id": "0000000211"
+        },
+        "s6IqgFebyH7FUbc5RXXE": {
+          "status": "Closed",
+          "createdDate": "2025-08-28T09:17:23.217",
+          "title": "Expense Invoice",
+          "ref_id": "0000000115",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "description": "No Description",
+          "assignedAdminId": "1BRMrKKMniOnrqHCUGpzOa9Wmww1",
+          "paymentMethod": "Bank"
+        },
+        "t2XB2PV8LTHeXCcoRty1": {
+          "userId": "rgnY7GkYreVshDYoKRNV0XNA0Ke2",
+          "description": "MONTHLY PAYMENT FOR PEMO",
+          "paymentMethod": "ADCB Bank",
+          "createdDate": "2025-11-06T11:44:35.526",
+          "title": "Expense Invoice",
+          "status": "Open",
+          "ref_id": "0000000282"
+        },
+        "tRbsFVMJP9KCW38hYuFg": {
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "status": "Closed",
+          "assignedAdminId": "1BRMrKKMniOnrqHCUGpzOa9Wmww1",
+          "createdDate": "2025-08-28T07:39:11.013",
+          "description": "No Description",
+          "title": "Sales Invoice",
+          "ref_id": "0000000067",
+          "paymentMethod": "Bank"
+        },
+        "ups34UhTiaZbGTyhF4jP": {
+          "title": "Expense Invoice",
+          "ref_id": "0000000314",
+          "description": "FINAL SETTLEMENT FOR JUJU",
+          "paymentMethod": "ADCB Bank",
+          "status": "Open",
+          "createdDate": "2025-11-11T07:17:25.803",
+          "userId": "rgnY7GkYreVshDYoKRNV0XNA0Ke2"
+        },
+        "vHZMvwYJzHeMzKn8shiP": {
+          "paymentMethod": "Bank",
+          "ref_id": "0000000046",
+          "description": "No Description",
+          "userId": "Di3YwGz9qvSlK4HwWqlbOWQslGy2",
+          "status": "Canceled",
+          "createdDate": "2025-05-19T15:23:39.815",
+          "title": "Expense Invoice"
+        },
+        "w7MLKMB9uq3oY38HKWeM": {
+          "description": "No Description",
+          "status": "Open",
+          "createdDate": "2025-10-24T07:21:48.531",
+          "title": "Expense Invoice",
+          "paymentMethod": "Bank",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "ref_id": "0000000261"
+        },
+        "yITvZMpogQmAPmufy679": {
+          "createdDate": "2025-05-19T15:23:54.257",
+          "ref_id": "0000000047",
+          "title": "Expense Invoice",
+          "status": "Canceled",
+          "description": "No Description",
+          "paymentMethod": "Bank",
+          "userId": "Di3YwGz9qvSlK4HwWqlbOWQslGy2"
+        },
+        "ymc5telbAmw5ScofHRhk": {
+          "ref_id": "0000000136",
+          "createdDate": "2025-08-28T10:01:39.662",
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "assignedAdminId": "1BRMrKKMniOnrqHCUGpzOa9Wmww1",
+          "paymentMethod": "Bank",
+          "description": "No Description",
+          "status": "Closed",
+          "title": "Expense Invoice"
+        },
+        "z4biezseZ0V0qpXhv9z5": {
+          "userId": "THAxtdlMhHchyiZarET2tUH2jde2",
+          "assignedAdminId": "1BRMrKKMniOnrqHCUGpzOa9Wmww1",
+          "title": "Expense Invoice",
+          "paymentMethod": "Bank",
+          "description": "No Description",
+          "ref_id": "0000000093",
+          "createdDate": "2025-08-28T09:12:28.597",
+          "status": "Closed"
+        }
+      }
+    }
+  }
+}
