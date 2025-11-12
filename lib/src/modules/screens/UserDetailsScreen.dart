@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../config/db_collections.dart';
 import '../../config/enums/payment_methods.dart';
+import '../../config/enums/user_role.dart';
+import '../../modules/models/user.dart';
 import '../../service/data_service.dart';
 
 class AbsolutelyVisibleUserDetailsScreen extends StatefulWidget {
@@ -28,6 +30,7 @@ class _AbsolutelyVisibleUserDetailsScreenState
   bool isLoadingCompanies = false;
   Map<String, List<PaymentMethods>> companyPaymentMethods = {};
   bool isLoadingPaymentMethods = false;
+  List<PaymentMethods> userPaymentMethods = [];
 
   @override
   void initState() {
@@ -53,12 +56,23 @@ class _AbsolutelyVisibleUserDetailsScreenState
         final companies = data['companies'] as List<dynamic>? ?? [];
         final companyNames = companies.map((e) => e.toString()).toList();
 
+        // Load user's payment methods directly from user document
+        final userMethods = data['paymentMethods'] as List<dynamic>? ?? [];
+        final userPaymentMethodsList = <PaymentMethods>[];
+        for (var method in userMethods) {
+          final pm = PaymentMethods.fromString(method.toString());
+          if (pm != null) {
+            userPaymentMethodsList.add(pm);
+          }
+        }
+
         setState(() {
           userCompanies = companyNames;
+          userPaymentMethods = userPaymentMethodsList;
           isLoadingCompanies = false;
         });
 
-        // Load payment methods for each company
+        // Load payment methods for each company (for companies section)
         if (companyNames.isNotEmpty) {
           final companiesSnapshot = await FirebaseFirestore.instance
               .collection(DbCollections.companies)
@@ -194,26 +208,78 @@ class _AbsolutelyVisibleUserDetailsScreenState
         return;
       }
 
-      // Step 2: Deactivate the company (this will auto-deactivate all users via DataService)
+      // Step 2: Deactivate the company
       final companyBatch = FirebaseFirestore.instance.batch();
       for (final doc in companiesSnapshot.docs) {
         companyBatch.update(doc.reference, {'isActive': false});
       }
       await companyBatch.commit();
 
-      // Step 3: Use DataService to deactivate all users in the company
-      await DataService.deactivateCompanyUsers(companyName);
+      // Step 3: Get all users in the company and deactivate them, but skip admins and users with other active companies
+      final usersSnapshot = await FirebaseFirestore.instance
+          .collection(DbCollections.users)
+          .where('companies', arrayContains: companyName)
+          .get();
+
+      final userBatch = FirebaseFirestore.instance.batch();
+      for (final userDoc in usersSnapshot.docs) {
+        final userData = userDoc.data();
+        final userRole = UserRole.fromString(userData['role'] ?? 'unknown');
+        final userCompanies = List<String>.from(userData['companies'] ?? []);
+
+        // Skip admins
+        if (userRole == UserRole.admin) continue;
+
+        // Check if user has other active companies
+        bool hasOtherActiveCompany = false;
+        for (final company in userCompanies) {
+          if (company != companyName) {
+            final companyDoc = await FirebaseFirestore.instance
+                .collection(DbCollections.companies)
+                .where('name', isEqualTo: company)
+                .where('isActive', isEqualTo: true)
+                .get();
+            if (companyDoc.docs.isNotEmpty) {
+              hasOtherActiveCompany = true;
+              break;
+            }
+          }
+        }
+
+        // Deactivate user only if they don't have other active companies
+        if (!hasOtherActiveCompany) {
+          userBatch.update(userDoc.reference, {'isActive': false});
+        }
+      }
+      await userBatch.commit();
 
       // Update local status if current user is affected
       if (userCompanies.contains(companyName)) {
-        setState(() => _currentStatus = false);
+        // Check if current user has other active companies
+        bool hasOtherActiveCompany = false;
+        for (final company in userCompanies) {
+          if (company != companyName) {
+            final companyDoc = await FirebaseFirestore.instance
+                .collection(DbCollections.companies)
+                .where('name', isEqualTo: company)
+                .where('isActive', isEqualTo: true)
+                .get();
+            if (companyDoc.docs.isNotEmpty) {
+              hasOtherActiveCompany = true;
+              break;
+            }
+          }
+        }
+        if (!hasOtherActiveCompany) {
+          setState(() => _currentStatus = false);
+        }
       }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content:
-                Text('Deactivated company "$companyName" and all its users'),
+            content: Text(
+                'Deactivated company "$companyName" and its users (excluding admins and users with other active companies)'),
             backgroundColor: Colors.orange,
             duration: const Duration(seconds: 4),
           ),
@@ -254,6 +320,35 @@ class _AbsolutelyVisibleUserDetailsScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            // Greeting Section
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.waving_hand,
+                    color: Colors.blue,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Hi ${widget.username}!',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
             Card(
               elevation: 2,
               shape: RoundedRectangleBorder(
@@ -438,6 +533,53 @@ class _AbsolutelyVisibleUserDetailsScreenState
                           color: Colors.grey,
                         ),
                       ),
+                    ],
+
+                    // User Payment Methods Section
+                    if (!isLoadingCompanies && !isLoadingPaymentMethods) ...[
+                      const SizedBox(height: 24),
+                      const Divider(),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'User Payment Methods',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (userPaymentMethods.isEmpty)
+                        const Text(
+                          'No payment methods available',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontStyle: FontStyle.italic,
+                            color: Colors.grey,
+                          ),
+                        )
+                      else
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: userPaymentMethods.map((method) {
+                            return Chip(
+                              avatar: const Icon(
+                                Icons.payment,
+                                size: 16,
+                                color: Colors.green,
+                              ),
+                              label: Text(
+                                method.toString(),
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              backgroundColor: Colors.green.withOpacity(0.15),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 4,
+                              ),
+                            );
+                          }).toList(),
+                        ),
                     ],
                   ],
                 ),

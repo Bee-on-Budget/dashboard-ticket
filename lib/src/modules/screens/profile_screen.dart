@@ -503,54 +503,82 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile Page'),
+        title: const Text('User Management'),
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        actions: [
+          IconButton(
+            onPressed: _switchSearch,
+            tooltip: _isSearchUsers ? 'Search Companies' : 'Search Users',
+            icon: Icon(_isSearchUsers ? Icons.business : Icons.people),
+          ),
+        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Theme.of(context).scaffoldBackgroundColor,
+              Theme.of(context).scaffoldBackgroundColor.withOpacity(0.8),
+            ],
+          ),
+        ),
         child: Column(
           children: [
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: min(MediaQuery.of(context).size.width * 0.8, 350),
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: _isSearchUsers
-                              ? 'Search Users...'
-                              : 'Search Companies...',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide.none,
-                          ),
-                          filled: true,
-                          fillColor: Colors.grey[200],
-                          prefixIcon: const Icon(
-                            Icons.search,
-                            color: Color(0xFF44564A),
-                          ),
-                          contentPadding:
-                              const EdgeInsets.symmetric(vertical: 0),
-                        ),
+            // Search Section
+            Container(
+              margin: const EdgeInsets.all(16),
+              child: Card(
+                elevation: 4,
+                shadowColor: Colors.black.withOpacity(0.1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: _isSearchUsers
+                          ? 'Search users by name or email...'
+                          : 'Search companies...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
                       ),
+                      filled: true,
+                      fillColor: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest
+                          .withOpacity(0.3),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(
+                                Icons.clear,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _searchText = '';
+                                });
+                              },
+                            )
+                          : null,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
                     ),
-                    IconButton(
-                      onPressed: _switchSearch,
-                      tooltip: 'Switch Search',
-                      icon: const Icon(Icons.swap_horiz),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
+
+            // Content
             Expanded(
               child: NotificationListener<ScrollNotification>(
                 onNotification: (notification) {
@@ -561,13 +589,77 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   stream: DataService.getUsers(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
                     }
                     if (snapshot.hasError) {
-                      return const Center(child: Text('Something went wrong!'));
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 64,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Something went wrong!',
+                              style: Theme.of(context).textTheme.headlineSmall,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              snapshot.error.toString(),
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withOpacity(0.7),
+                                  ),
+                            ),
+                          ],
+                        ),
+                      );
                     }
                     if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return const Center(child: Text('There are no users'));
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.people_outline,
+                              size: 64,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withOpacity(0.5),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No users found',
+                              style: Theme.of(context).textTheme.headlineSmall,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'There are no users in the system yet',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withOpacity(0.7),
+                                  ),
+                            ),
+                          ],
+                        ),
+                      );
                     }
 
                     final users = snapshot.data!;
@@ -587,227 +679,375 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                     return ListView.builder(
                       controller: _scrollController,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       itemCount: filteredUsers.length,
                       itemBuilder: (context, idx) {
                         final user = filteredUsers[idx];
                         final isExpanded = _expansionStates[user.id] ?? false;
 
-                        return Card(
-                          key: _itemKeys[user.id],
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            side: BorderSide(
-                              color: user.isActive ? Colors.green : Colors.grey,
-                              width: 2,
-                            ),
-                          ),
-                          child: ExpansionTile(
-                            initiallyExpanded: isExpanded,
-                            maintainState: true,
-                            onExpansionChanged: (expanded) {
-                              setState(() {
-                                _expansionStates[user.id] = expanded;
-                                _expandedUserId = expanded ? user.id : null;
-                                if (expanded) {
-                                  _scrollToExpandedItem(user.id);
-                                }
-                              });
-                            },
-                            title: Text(
-                              user.username,
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.secondary,
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: Card(
+                            key: _itemKeys[user.id],
+                            elevation: 4,
+                            shadowColor: Colors.black.withOpacity(0.1),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(
+                                color: user.isActive
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withOpacity(0.3)
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .outline
+                                        .withOpacity(0.3),
+                                width: 1,
                               ),
                             ),
-                            subtitle: Text(
-                              user.role.toString(),
-                              style: TextStyle(color: Colors.grey[600]),
-                            ),
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: FutureBuilder<
-                                    Map<String, List<PaymentMethods>>>(
-                                  future: _getPaymentMethodsByCompany(
-                                      user.companies),
-                                  builder: (context, paymentSnapshot) {
-                                    final companyPaymentMethods =
-                                        paymentSnapshot.data ?? {};
-
-                                    return Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        _buildDetailRow('Email', user.email),
-                                        _buildDetailRow(
-                                            'Phone Number', user.phoneNumber),
-
-                                        // Display companies with their payment methods
-                                        if (user.companies.isNotEmpty) ...[
-                                          const SizedBox(height: 12),
-                                          const Text(
-                                            'Companies & Payment Methods:',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          if (paymentSnapshot.connectionState ==
-                                              ConnectionState.waiting)
-                                            const Padding(
-                                              padding: EdgeInsets.all(8.0),
-                                              child: Center(
-                                                  child:
-                                                      CircularProgressIndicator()),
-                                            )
-                                          else
-                                            ...user.companies
-                                                .map((companyName) {
-                                              final paymentMethods =
-                                                  companyPaymentMethods[
-                                                          companyName] ??
-                                                      [];
-                                              return Container(
-                                                margin: const EdgeInsets.only(
-                                                    bottom: 12),
-                                                padding:
-                                                    const EdgeInsets.all(12),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.blue
-                                                      .withOpacity(0.05),
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                  border: Border.all(
-                                                    color: Colors.blue
-                                                        .withOpacity(0.3),
-                                                  ),
-                                                ),
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Row(
-                                                      children: [
-                                                        const Icon(
-                                                          Icons.business,
-                                                          size: 18,
-                                                          color: Colors.blue,
-                                                        ),
-                                                        const SizedBox(
-                                                            width: 8),
-                                                        Text(
-                                                          companyName,
-                                                          style:
-                                                              const TextStyle(
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                            fontSize: 15,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    const SizedBox(height: 8),
-                                                    Row(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        const Icon(
-                                                          Icons.payment,
-                                                          size: 16,
-                                                          color: Colors.grey,
-                                                        ),
-                                                        const SizedBox(
-                                                            width: 8),
-                                                        Expanded(
-                                                          child: Text(
-                                                            paymentMethods
-                                                                    .isEmpty
-                                                                ? 'No payment methods'
-                                                                : paymentMethods
-                                                                    .map((pm) =>
-                                                                        pm.toString())
-                                                                    .join(', '),
-                                                            style: TextStyle(
-                                                              color: Colors
-                                                                  .grey[700],
-                                                              fontSize: 13,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ],
-                                                ),
-                                              );
-                                            }).toList(),
-                                        ],
-
-                                        _buildDetailRow(
-                                          'Created At',
-                                          user.createdAt == null
-                                              ? 'No Date'
-                                              : DateFormat('yyyy MMM, dd')
-                                                  .format(user.createdAt!),
-                                        ),
-                                        const SizedBox(height: 16),
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceEvenly,
-                                          children: [
-                                            ElevatedButton(
-                                              onPressed: () {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        TicketsScreen(
-                                                      userId: user.id,
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                              child: const Text('View Tickets'),
-                                            ),
-                                            ElevatedButton(
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.blue,
-                                                foregroundColor: Colors.white,
-                                              ),
-                                              onPressed: () {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        AbsolutelyVisibleUserDetailsScreen(
-                                                      userId: user.id,
-                                                      username: user.username,
-                                                      isActive: user.isActive,
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                              child: const Text('Full Details'),
-                                            ),
-                                            IconButton(
-                                              icon: const Icon(Icons.edit),
-                                              color: Colors.green,
-                                              onPressed: () =>
-                                                  _editUserInfo(user),
-                                              tooltip: 'Edit User',
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    );
-                                  },
+                            child: ExpansionTile(
+                              initiallyExpanded: isExpanded,
+                              maintainState: true,
+                              onExpansionChanged: (expanded) {
+                                setState(() {
+                                  _expansionStates[user.id] = expanded;
+                                  _expandedUserId = expanded ? user.id : null;
+                                  if (expanded) {
+                                    _scrollToExpandedItem(user.id);
+                                  }
+                                });
+                              },
+                              leading: CircleAvatar(
+                                backgroundColor: user.isActive
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(context).colorScheme.outline,
+                                child: Text(
+                                  user.username.isNotEmpty
+                                      ? user.username[0].toUpperCase()
+                                      : '?',
+                                  style: TextStyle(
+                                    color: user.isActive
+                                        ? Theme.of(context)
+                                            .colorScheme
+                                            .onPrimary
+                                        : Theme.of(context)
+                                            .colorScheme
+                                            .onSurface,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
-                            ],
+                              title: Text(
+                                user.username,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface,
+                                    ),
+                              ),
+                              subtitle: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: user.role.toString() == 'admin'
+                                          ? Theme.of(context)
+                                              .colorScheme
+                                              .primary
+                                              .withOpacity(0.1)
+                                          : Theme.of(context)
+                                              .colorScheme
+                                              .secondary
+                                              .withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      user.role.toString(),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: user.role.toString() == 'admin'
+                                            ? Theme.of(context)
+                                                .colorScheme
+                                                .primary
+                                            : Theme.of(context)
+                                                .colorScheme
+                                                .secondary,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: user.isActive
+                                          ? Colors.green
+                                          : Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    user.isActive ? 'Active' : 'Inactive',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: user.isActive
+                                          ? Colors.green
+                                          : Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(20.0),
+                                  child: FutureBuilder<
+                                      Map<String, List<PaymentMethods>>>(
+                                    future: _getPaymentMethodsByCompany(
+                                        user.companies),
+                                    builder: (context, paymentSnapshot) {
+                                      final companyPaymentMethods =
+                                          paymentSnapshot.data ?? {};
+
+                                      return Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          // Basic Info
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: _buildDetailRow(
+                                                    'Email', user.email),
+                                              ),
+                                              Expanded(
+                                                child: _buildDetailRow(
+                                                    'Phone', user.phoneNumber),
+                                              ),
+                                            ],
+                                          ),
+
+                                          // Companies Section
+                                          if (user.companies.isNotEmpty) ...[
+                                            const SizedBox(height: 16),
+                                            Text(
+                                              'Associated Companies',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleMedium
+                                                  ?.copyWith(
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurface,
+                                                  ),
+                                            ),
+                                            const SizedBox(height: 12),
+                                            if (paymentSnapshot
+                                                    .connectionState ==
+                                                ConnectionState.waiting)
+                                              const Padding(
+                                                padding: EdgeInsets.all(8.0),
+                                                child: Center(
+                                                    child:
+                                                        CircularProgressIndicator()),
+                                              )
+                                            else
+                                              ...user.companies
+                                                  .map((companyName) {
+                                                final paymentMethods =
+                                                    companyPaymentMethods[
+                                                            companyName] ??
+                                                        [];
+                                                return Container(
+                                                  margin: const EdgeInsets.only(
+                                                      bottom: 12),
+                                                  padding:
+                                                      const EdgeInsets.all(16),
+                                                  decoration: BoxDecoration(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .surfaceContainerHighest
+                                                        .withOpacity(0.3),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12),
+                                                    border: Border.all(
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .outline
+                                                          .withOpacity(0.2),
+                                                    ),
+                                                  ),
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Row(
+                                                        children: [
+                                                          Icon(
+                                                            Icons.business,
+                                                            size: 20,
+                                                            color: Theme.of(
+                                                                    context)
+                                                                .colorScheme
+                                                                .primary,
+                                                          ),
+                                                          const SizedBox(
+                                                              width: 8),
+                                                          Text(
+                                                            companyName,
+                                                            style: Theme.of(
+                                                                    context)
+                                                                .textTheme
+                                                                .titleSmall
+                                                                ?.copyWith(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  color: Theme.of(
+                                                                          context)
+                                                                      .colorScheme
+                                                                      .onSurface,
+                                                                ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      Row(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                          Icon(
+                                                            Icons.payment,
+                                                            size: 16,
+                                                            color: Theme.of(
+                                                                    context)
+                                                                .colorScheme
+                                                                .onSurface
+                                                                .withOpacity(
+                                                                    0.6),
+                                                          ),
+                                                          const SizedBox(
+                                                              width: 8),
+                                                          Expanded(
+                                                            child: Text(
+                                                              paymentMethods
+                                                                      .isEmpty
+                                                                  ? 'No payment methods configured'
+                                                                  : paymentMethods
+                                                                      .map((pm) => pm
+                                                                          .toString())
+                                                                      .join(
+                                                                          ', '),
+                                                              style: Theme.of(
+                                                                      context)
+                                                                  .textTheme
+                                                                  .bodySmall
+                                                                  ?.copyWith(
+                                                                    color: Theme.of(
+                                                                            context)
+                                                                        .colorScheme
+                                                                        .onSurface
+                                                                        .withOpacity(
+                                                                            0.8),
+                                                                  ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                              }).toList(),
+                                          ],
+
+                                          // Created Date
+                                          const SizedBox(height: 16),
+                                          _buildDetailRow(
+                                            'Member Since',
+                                            user.createdAt == null
+                                                ? 'Unknown'
+                                                : DateFormat('MMM dd, yyyy')
+                                                    .format(user.createdAt!),
+                                          ),
+
+                                          // Action Buttons
+                                          const SizedBox(height: 20),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: OutlinedButton.icon(
+                                                  onPressed: () {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) =>
+                                                            TicketsScreen(
+                                                          userId: user.id,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                  icon: const Icon(Icons
+                                                      .confirmation_number),
+                                                  label: const Text(
+                                                      'View Tickets'),
+                                                  style:
+                                                      OutlinedButton.styleFrom(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        vertical: 12),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: FilledButton.icon(
+                                                  onPressed: () {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) =>
+                                                            AbsolutelyVisibleUserDetailsScreen(
+                                                          userId: user.id,
+                                                          username:
+                                                              user.username,
+                                                          isActive:
+                                                              user.isActive,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                  icon: const Icon(Icons.info),
+                                                  label: const Text('Details'),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              IconButton.filledTonal(
+                                                onPressed: () =>
+                                                    _editUserInfo(user),
+                                                icon: const Icon(Icons.edit),
+                                                tooltip: 'Edit User',
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       },

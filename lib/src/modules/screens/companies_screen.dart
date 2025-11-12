@@ -7,6 +7,7 @@ import '../models/user.dart';
 import '../../service/data_service.dart';
 import '../../config/db_collections.dart';
 import 'searchable_user_selection.dart';
+import 'CreateCompanyScreen.dart';
 
 class CompaniesScreen extends StatefulWidget {
   const CompaniesScreen({super.key});
@@ -116,7 +117,7 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
       id: originalCompany.id,
       name: name,
       paymentMethods: paymentMethods,
-      createdAt: originalCompany.createdAt,
+      createdAt: originalCompany.createdAt ?? DateTime.now(),
       isActive: isActive,
     );
 
@@ -247,7 +248,7 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
-                              color: theme.primaryColor,
+                              color: theme.colorScheme.onSurface,
                             ),
                           ),
                           IconButton(
@@ -465,7 +466,7 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: theme.primaryColor,
-                              foregroundColor: Colors.white,
+                              foregroundColor: theme.colorScheme.onPrimary,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -757,96 +758,230 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Companies'),
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: _createNewCompany,
             tooltip: 'Create Company',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CreateCompanyScreen(),
+                ),
+              );
+            },
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const CreateCompanyScreen(),
+            ),
+          );
+        },
+        child: const Icon(Icons.add),
+        tooltip: 'Create Company',
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Theme.of(context).scaffoldBackgroundColor,
+              Theme.of(context).scaffoldBackgroundColor.withOpacity(0.8),
+            ],
+          ),
+        ),
         child: Column(
           children: [
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search Companies...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,
+            // Search Section
+            Container(
+              margin: const EdgeInsets.all(16),
+              child: Card(
+                elevation: 4,
+                shadowColor: Colors.black.withOpacity(0.1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search companies by name or description...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest
+                          .withOpacity(0.3),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(
+                                Icons.clear,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _searchText = '';
+                                });
+                              },
+                            )
+                          : null,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
                     ),
-                    filled: true,
-                    fillColor: Colors.grey[200],
-                    prefixIcon: const Icon(
-                      Icons.search,
-                      color: Color(0xFF44564A),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
                   ),
                 ),
               ),
             ),
+
+            // Content
             Expanded(
-              child: NotificationListener<ScrollNotification>(
-                onNotification: (notification) {
-                  _saveScrollPosition();
-                  return false;
-                },
-                child: StreamBuilder<List<Company>>(
-                  stream: DataService.getCompanies(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
+              child: StreamBuilder<List<Company>>(
+                stream: DataService.getCompanies(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 64,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Something went wrong!',
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            snapshot.error.toString(),
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withOpacity(0.7),
+                                ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.business_center_outlined,
+                            size: 64,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withOpacity(0.5),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No companies found',
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'There are no companies in the system yet',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withOpacity(0.7),
+                                ),
+                          ),
+                          const SizedBox(height: 24),
+                          FilledButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const CreateCompanyScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.add_business),
+                            label: const Text('Add First Company'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final companies = snapshot.data!;
+                  final filteredCompanies = _filterCompanies(companies);
+
+                  for (var company in filteredCompanies) {
+                    _itemKeys.putIfAbsent(company.id, () => GlobalKey());
+                  }
+
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (_expandedCompanyId != null) {
+                      _scrollToExpandedItem(_expandedCompanyId!);
+                    } else {
+                      _restoreScrollPosition();
                     }
-                    if (snapshot.hasError) {
-                      return const Center(child: Text('Something went wrong!'));
-                    }
-                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return const Center(
-                          child: Text('There are no companies'));
-                    }
+                  });
 
-                    final companies = snapshot.data!;
-                    final filteredCompanies = _filterCompanies(companies);
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: filteredCompanies.length,
+                    itemBuilder: (context, idx) {
+                      final company = filteredCompanies[idx];
+                      final isExpanded = _expansionStates[company.id] ?? false;
 
-                    for (var company in filteredCompanies) {
-                      _itemKeys.putIfAbsent(company.id, () => GlobalKey());
-                    }
-
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (_expandedCompanyId != null) {
-                        _scrollToExpandedItem(_expandedCompanyId!);
-                      } else {
-                        _restoreScrollPosition();
-                      }
-                    });
-
-                    return ListView.builder(
-                      controller: _scrollController,
-                      itemCount: filteredCompanies.length,
-                      itemBuilder: (context, idx) {
-                        final company = filteredCompanies[idx];
-                        final isExpanded =
-                            _expansionStates[company.id] ?? false;
-
-                        return Card(
-                          key: _itemKeys[company.id],
-                          elevation: 2,
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Card(
+                          elevation: 4,
+                          shadowColor: Colors.black.withOpacity(0.1),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
+                            borderRadius: BorderRadius.circular(16),
                             side: BorderSide(
-                              color:
-                                  company.isActive ? Colors.green : Colors.grey,
-                              width: 2,
+                              color: company.isActive
+                                  ? Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withOpacity(0.3)
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .outline
+                                      .withOpacity(0.3),
+                              width: 1,
                             ),
                           ),
                           child: ExpansionTile(
@@ -862,102 +997,225 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                                 }
                               });
                             },
-                            title: Text(
-                              company.name,
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.secondary,
+                            leading: CircleAvatar(
+                              backgroundColor: company.isActive
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).colorScheme.outline,
+                              child: Icon(
+                                Icons.business,
+                                color: company.isActive
+                                    ? Theme.of(context).colorScheme.onPrimary
+                                    : Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
-                            subtitle: Text(
-                              company.isActive ? 'Active' : 'Inactive',
-                              style: TextStyle(
-                                color: company.isActive
-                                    ? Colors.green
-                                    : Colors.grey,
-                              ),
+                            title: Text(
+                              company.name,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color:
+                                        Theme.of(context).colorScheme.onSurface,
+                                  ),
+                            ),
+                            subtitle: Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: company.isActive
+                                        ? Colors.green
+                                        : Colors.grey,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  company.isActive ? 'Active' : 'Inactive',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: company.isActive
+                                        ? Colors.green
+                                        : Colors.grey,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  DateFormat('MMM dd, yyyy').format(
+                                      company.createdAt ?? DateTime.now()),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withOpacity(0.6),
+                                  ),
+                                ),
+                              ],
                             ),
                             children: [
                               Padding(
-                                padding: const EdgeInsets.all(16.0),
+                                padding: const EdgeInsets.all(20.0),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _buildDetailRow(
-                                      'Payment Methods',
-                                      company.paymentMethods.isNotEmpty
-                                          ? company.paymentMethods.join(', ')
-                                          : 'None',
-                                    ),
-                                    _buildDetailRow(
-                                      'Created At',
-                                      company.createdAt == null
-                                          ? 'No Date'
-                                          : DateFormat('yyyy MMM, dd')
-                                              .format(company.createdAt!),
-                                    ),
-                                    const SizedBox(height: 16),
+                                    // Basic Info
+                                    if (company.description?.isNotEmpty ??
+                                        false) ...[
+                                      _buildDetailRow(
+                                          'Description', company.description!),
+                                      const SizedBox(height: 12),
+                                    ],
                                     Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceEvenly,
                                       children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.edit),
-                                          color: Colors.green,
-                                          onPressed: () =>
-                                              _editCompanyInfo(company),
-                                          tooltip: 'Edit Company',
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.delete),
-                                          color: Colors.red,
-                                          onPressed: () async {
-                                            final confirm =
-                                                await showDialog<bool>(
-                                              context: context,
-                                              builder: (context) => AlertDialog(
-                                                title: const Text(
-                                                    'Delete Company'),
-                                                content: Text(
-                                                    'Are you sure you want to delete ${company.name}?'),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () =>
-                                                        Navigator.pop(
-                                                            context, true),
-                                                    child: const Text('Delete'),
-                                                  ),
-                                                ],
+                                        if (company.phone?.isNotEmpty ?? false)
+                                          Expanded(
+                                            child: _buildDetailRow(
+                                                'Phone', company.phone!),
+                                          ),
+                                        if (company.email?.isNotEmpty ?? false)
+                                          Expanded(
+                                            child: _buildDetailRow(
+                                                'Email', company.email!),
+                                          ),
+                                      ],
+                                    ),
+                                    if (company.website?.isNotEmpty ??
+                                        false) ...[
+                                      const SizedBox(height: 12),
+                                      _buildDetailRow(
+                                          'Website', company.website!),
+                                    ],
+                                    if (company.address?.isNotEmpty ??
+                                        false) ...[
+                                      const SizedBox(height: 12),
+                                      _buildDetailRow(
+                                          'Address', company.address!),
+                                    ],
+
+                                    // Payment Methods
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Payment Methods',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    company.paymentMethods.isEmpty
+                                        ? Container(
+                                            padding: const EdgeInsets.all(16),
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .surfaceContainerHighest
+                                                  .withOpacity(0.3),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .outline
+                                                    .withOpacity(0.2),
                                               ),
-                                            );
-                                            if (confirm == true) {
-                                              try {
-                                                await DataService.deleteCompany(
-                                                    company.id);
-                                                if (mounted) {
-                                                  ScaffoldMessenger.of(context)
-                                                      .showSnackBar(
-                                                    const SnackBar(
-                                                      content: Text(
-                                                          'Company deleted successfully!'),
-                                                      backgroundColor:
-                                                          Colors.green,
-                                                    ),
-                                                  );
-                                                }
-                                              } catch (e) {
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                        'Error: ${e.toString()}'),
-                                                    backgroundColor: Colors.red,
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.payment,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurface
+                                                      .withOpacity(0.6),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Text(
+                                                  'No payment methods configured',
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .bodyMedium
+                                                      ?.copyWith(
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .onSurface
+                                                            .withOpacity(0.7),
+                                                      ),
+                                                ),
+                                              ],
+                                            ),
+                                          )
+                                        : Wrap(
+                                            spacing: 8,
+                                            runSpacing: 8,
+                                            children: company.paymentMethods
+                                                .map((method) {
+                                              return Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 12,
+                                                        vertical: 6),
+                                                decoration: BoxDecoration(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .primary
+                                                      .withOpacity(0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(20),
+                                                  border: Border.all(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .primary
+                                                        .withOpacity(0.3),
                                                   ),
-                                                );
-                                              }
-                                            }
-                                          },
+                                                ),
+                                                child: Text(
+                                                  method.toString(),
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .primary,
+                                                  ),
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ),
+
+                                    // Action Buttons
+                                    const SizedBox(height: 20),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: FilledButton.icon(
+                                            onPressed: () =>
+                                                _editCompanyInfo(company),
+                                            icon: const Icon(Icons.edit),
+                                            label: const Text('Edit Company'),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        IconButton.filledTonal(
+                                          onPressed: () =>
+                                              _deleteCompany(company),
+                                          icon: const Icon(Icons.delete),
+                                          style: IconButton.styleFrom(
+                                            backgroundColor: Theme.of(context)
+                                                .colorScheme
+                                                .error
+                                                .withOpacity(0.1),
+                                            foregroundColor: Theme.of(context)
+                                                .colorScheme
+                                                .error,
+                                          ),
                                           tooltip: 'Delete Company',
                                         ),
                                       ],
@@ -967,11 +1225,11 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                               ),
                             ],
                           ),
-                        );
-                      },
-                    );
-                  },
-                ),
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ),
           ],
@@ -1005,6 +1263,50 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
         _searchText = _searchController.text.toLowerCase();
       });
     });
+  }
+
+  Future<void> _deleteCompany(Company company) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Company'),
+        content: Text(
+          'Are you sure you want to delete "${company.name}"? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await DataService.deleteCompany(company.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Company "${company.name}" deleted successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting company: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   List<Company> _filterCompanies(List<Company> companies) {

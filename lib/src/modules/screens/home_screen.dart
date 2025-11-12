@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_dashboard/src/config/db_collections.dart';
 import 'package:flutter_dashboard/src/config/enums/ticket_status.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_dashboard/src/modules/screens/CreateCompanyScreen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   Future<Map<String, int>> _fetchStatistics() async {
-    final snapshot =
-        await FirebaseFirestore.instance.collection(DbCollections.tickets).get();
+    final snapshot = await FirebaseFirestore.instance
+        .collection(DbCollections.tickets)
+        .get();
     final tickets = snapshot.docs;
 
     return {
@@ -25,8 +28,9 @@ class HomeScreen extends StatelessWidget {
   }
 
   Future<List<PieChartSectionData>> _fetchTicketStatusData() async {
-    final snapshot =
-        await FirebaseFirestore.instance.collection(DbCollections.tickets).get();
+    final snapshot = await FirebaseFirestore.instance
+        .collection(DbCollections.tickets)
+        .get();
     final tickets = snapshot.docs;
 
     final statusCounts = {
@@ -88,8 +92,9 @@ class HomeScreen extends StatelessWidget {
   }
 
   Future<List<Map<String, dynamic>>> _fetchTicketsOverTime() async {
-    final snapshot =
-        await FirebaseFirestore.instance.collection(DbCollections.tickets).get();
+    final snapshot = await FirebaseFirestore.instance
+        .collection(DbCollections.tickets)
+        .get();
     final tickets = snapshot.docs;
 
     final ticketsByDate = <String, int>{};
@@ -141,7 +146,7 @@ class HomeScreen extends StatelessWidget {
                 if (snapshot.hasError) {
                   return _buildErrorWidget(snapshot.error.toString());
                 }
-                return _buildStatisticsGrid(snapshot.data!, cardColor);
+                return _buildStatisticsGrid(snapshot.data!, cardColor, theme);
               },
             ),
             const SizedBox(height: 32),
@@ -192,7 +197,7 @@ class HomeScreen extends StatelessWidget {
           'Dashboard Overview',
           style: theme.textTheme.headlineMedium?.copyWith(
             fontWeight: FontWeight.bold,
-            color: theme.colorScheme.primary,
+            color: theme.colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 8),
@@ -216,7 +221,8 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatisticsGrid(Map<String, int> stats, Color cardColor) {
+  Widget _buildStatisticsGrid(
+      Map<String, int> stats, Color cardColor, ThemeData theme) {
     return StaggeredGrid.count(
       crossAxisCount: 4,
       mainAxisSpacing: 16,
@@ -228,6 +234,7 @@ class HomeScreen extends StatelessWidget {
           Icons.assignment,
           Colors.blue,
           cardColor,
+          theme,
         ),
         _buildEnhancedStatCard(
           'Open',
@@ -235,6 +242,7 @@ class HomeScreen extends StatelessWidget {
           Icons.lock_open,
           Colors.orange,
           cardColor,
+          theme,
         ),
         _buildEnhancedStatCard(
           'In Progress',
@@ -242,6 +250,7 @@ class HomeScreen extends StatelessWidget {
           Icons.autorenew,
           Colors.purple,
           cardColor,
+          theme,
         ),
         _buildEnhancedStatCard(
           'Closed',
@@ -249,6 +258,7 @@ class HomeScreen extends StatelessWidget {
           Icons.check_circle,
           Colors.green,
           cardColor,
+          theme,
         ),
         _buildEnhancedStatCard(
           'Rework',
@@ -256,6 +266,7 @@ class HomeScreen extends StatelessWidget {
           Icons.build,
           Colors.red,
           cardColor,
+          theme,
         ),
         _buildEnhancedStatCard(
           'Canceled',
@@ -263,6 +274,7 @@ class HomeScreen extends StatelessWidget {
           Icons.cancel,
           Colors.grey,
           cardColor,
+          theme,
         ),
       ],
     );
@@ -274,6 +286,7 @@ class HomeScreen extends StatelessWidget {
     IconData icon,
     Color color,
     Color cardColor,
+    ThemeData theme,
   ) {
     return Card(
       elevation: 4,
@@ -310,9 +323,10 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
+                color: theme.colorScheme.onSurface,
               ),
             ),
           ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // import 'test_screen.dart';
 import 'home_screen.dart';
@@ -7,6 +8,7 @@ import 'create_user_screen.dart';
 import 'tickets_screen.dart';
 import 'profile_screen.dart';
 import 'companies_screen.dart';
+import '../../config/db_collections.dart';
 
 class MergedScreen extends StatefulWidget {
   const MergedScreen({super.key});
@@ -18,6 +20,42 @@ class MergedScreen extends StatefulWidget {
 // MergedScreen.dart
 class MergedScreenState extends State<MergedScreen> {
   int _currentIndex = 0; // Private variable
+  String? _userName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final userDoc = await FirebaseFirestore.instance
+            .collection(DbCollections.users)
+            .doc(user.uid)
+            .get();
+        if (userDoc.exists) {
+          final userData = userDoc.data();
+          setState(() {
+            _userName = userData?['username'] ??
+                user.displayName ??
+                user.email?.split('@')[0] ??
+                'User';
+          });
+        } else {
+          setState(() {
+            _userName = user.displayName ?? user.email?.split('@')[0] ?? 'User';
+          });
+        }
+      } catch (e) {
+        setState(() {
+          _userName = user.displayName ?? user.email?.split('@')[0] ?? 'User';
+        });
+      }
+    }
+  }
 
   // Public method to update _currentIndex
   void updateCurrentIndex(int index) {
@@ -38,13 +76,28 @@ class MergedScreenState extends State<MergedScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Admin Panel',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Admin Panel',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            if (_userName != null)
+              Text(
+                'Hi $_userName!',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+          ],
         ),
         backgroundColor: Color(0xFF44564A),
         elevation: 0,
@@ -83,7 +136,7 @@ class MergedScreenState extends State<MergedScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.end,
-                  children: const [
+                  children: [
                     Text(
                       'Dashboard',
                       style: TextStyle(
@@ -100,6 +153,17 @@ class MergedScreenState extends State<MergedScreen> {
                         fontSize: 14,
                       ),
                     ),
+                    if (_userName != null) ...[
+                      SizedBox(height: 8),
+                      Text(
+                        'Hi ${_userName}!',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

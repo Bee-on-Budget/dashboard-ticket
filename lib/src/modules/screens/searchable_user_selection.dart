@@ -94,7 +94,7 @@ class _SearchableUserSelectionState extends State<SearchableUserSelection> {
     }
   }
 
-  // Search by nameLower range without isActive in query, filter client-side
+  // Search by loading all active users and filtering client-side
   Future<void> _searchUsers(String query) async {
     if (query.isEmpty) {
       await _loadInitialUsers();
@@ -106,26 +106,26 @@ class _SearchableUserSelectionState extends State<SearchableUserSelection> {
     try {
       final snap = await FirebaseFirestore.instance
           .collection(DbCollections.users)
-          .where('nameLower', isGreaterThanOrEqualTo: lower)
-          .where('nameLower', isLessThanOrEqualTo: '$lower\uf8ff')
-          .limit(100)
+          .where('isActive', isEqualTo: true)
+          .limit(200)
           .get();
 
-      final allResults = snap.docs
-          .map((d) {
-            final data = d.data() as Map<String, dynamic>;
-            return {
-              'id': d.id,
-              'name': (data['name'] ?? data['displayName'] ?? '').toString(),
-              'email': (data['email'] ?? '').toString(),
-              'nameLower': (data['nameLower'] ??
-                      (data['name'] ?? '').toString().toLowerCase())
-                  .toString(),
-              'isActive': data['isActive'] == true,
-            };
-          })
-          .where((u) => u['isActive'] == true)
-          .toList();
+      final allResults = snap.docs.map((d) {
+        final data = d.data() as Map<String, dynamic>;
+        return {
+          'id': d.id,
+          'name': (data['name'] ?? data['displayName'] ?? '').toString(),
+          'email': (data['email'] ?? '').toString(),
+          'nameLower': (data['nameLower'] ??
+                  (data['name'] ?? '').toString().toLowerCase())
+              .toString(),
+          'isActive': true,
+        };
+      }).where((u) {
+        final nl = (u['nameLower'] as String).toLowerCase();
+        final em = (u['email'] as String).toLowerCase();
+        return nl.contains(lower) || em.contains(lower);
+      }).toList();
 
       // Sort by name client-side
       allResults.sort((a, b) =>
@@ -133,23 +133,14 @@ class _SearchableUserSelectionState extends State<SearchableUserSelection> {
 
       _results = allResults.take(50).toList();
     } catch (e, st) {
-      debugPrint('searchUsers firestore error: $e\n$st');
-
-      // Fallback to client-side filtering of current results
+      debugPrint('searchUsers error: $e\n$st');
+      _results = [];
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Search error, using local filter')),
+          SnackBar(
+              content: Text('Search error: ${e.toString().split('\n').first}')),
         );
       }
-
-      final fallback = _results.where((u) {
-        final nl =
-            (u['nameLower'] ?? (u['name'] ?? '')).toString().toLowerCase();
-        final em = (u['email'] ?? '').toString().toLowerCase();
-        return nl.contains(lower) || em.contains(lower);
-      }).toList();
-
-      _results = fallback;
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
