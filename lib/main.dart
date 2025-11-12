@@ -7,6 +7,8 @@ import 'src/modules/screens/merged_screen.dart';
 import 'src/modules/screens/create_user_screen.dart';
 import 'src/modules/screens/tickets_screen.dart';
 import 'src/modules/screens/login_screen.dart';
+import 'src/modules/screens/home_screen.dart';
+import 'src/service/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,9 +42,14 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class AuthCheck extends StatelessWidget {
+class AuthCheck extends StatefulWidget {
   const AuthCheck({super.key});
 
+  @override
+  State<AuthCheck> createState() => _AuthCheckState();
+}
+
+class _AuthCheckState extends State<AuthCheck> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
@@ -51,8 +58,27 @@ class AuthCheck extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (snapshot.hasData) {
-          return MergedScreen(); // Keep your existing functionality
+        if (snapshot.hasData && snapshot.data != null) {
+          // Check user role and active status
+          return FutureBuilder<String?>(
+            future: AuthService().getRole(snapshot.data!.uid),
+            builder: (context, roleSnapshot) {
+              if (roleSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (roleSnapshot.hasData) {
+                final role = roleSnapshot.data;
+                if (role == 'admin') {
+                  return MergedScreen();
+                } else {
+                  return HomeScreen();
+                }
+              } else {
+                // If role fetch fails, default to login
+                return const LoginScreen();
+              }
+            },
+          );
         } else {
           return const LoginScreen();
         }

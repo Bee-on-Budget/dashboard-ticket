@@ -24,21 +24,14 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text.trim();
 
     if (identifier.isNotEmpty && password.isNotEmpty) {
-      final user =
-      await AuthService().signInWithEmailAndPassword(identifier, password);
+      final user = isEmailSelected
+          ? await AuthService().signInWithEmailAndPassword(identifier, password)
+          : await AuthService()
+              .signInWithPhoneAndPassword(identifier, password);
 
       if (user != null) {
-        final role = await AuthService().getRole(user.uid);
-
-        if (mounted) {
-          if (role == 'admin') {
-            Navigator.pushReplacementNamed(
-                context, '/merged'); // Admins go to CreateUser
-          } else {
-            Navigator.pushReplacementNamed(
-                context, '/home'); // Regular users go to Home
-          }
-        }
+        // Navigation is handled by AuthCheck in main.dart via stream
+        // No need to navigate here, as the auth state change will trigger the rebuild
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -87,10 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final double screenWidth = MediaQuery
-        .of(context)
-        .size
-        .width;
+    final double screenWidth = MediaQuery.of(context).size.width;
     final double width = min(screenWidth * 0.4, 600); // Wider for big screens
 
     return Scaffold(
@@ -172,7 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         labelText: isEmailSelected ? 'Email' : 'Phone Number',
                         border: OutlineInputBorder(),
                         prefixIcon:
-                        Icon(isEmailSelected ? Icons.email : Icons.phone),
+                            Icon(isEmailSelected ? Icons.email : Icons.phone),
                       ),
                       keyboardType: isEmailSelected
                           ? TextInputType.emailAddress
