@@ -80,10 +80,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final context = key.currentContext;
         if (context != null) {
           final ScrollableState? scrollable = Scrollable.of(context);
-          final double? itemCenterOffset = _getItemOffset(context, alignment: 0.5);
+          final double? itemCenterOffset =
+              _getItemOffset(context, alignment: 0.5);
           if (scrollable != null && itemCenterOffset != null) {
             final double currentOffset = _scrollController.position.pixels;
-            final double viewportExtent = _scrollController.position.viewportDimension;
+            final double viewportExtent =
+                _scrollController.position.viewportDimension;
             final double itemTopOffset = itemCenterOffset - viewportExtent / 2;
 
             if ((itemTopOffset - currentOffset).abs() > 1.0) {
@@ -103,7 +105,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // NEW: Get payment methods for each company separately
-  Future<Map<String, List<PaymentMethods>>> _getPaymentMethodsByCompany(
+  Future<Map<String, List<String>>> _getPaymentMethodsByCompany(
       List<String> companyNames) async {
     if (companyNames.isEmpty) return {};
 
@@ -113,19 +115,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           .where('name', whereIn: companyNames)
           .get();
 
-      final Map<String, List<PaymentMethods>> companyPaymentMethods = {};
+      final Map<String, List<String>> companyPaymentMethods = {};
 
       for (var doc in companiesSnapshot.docs) {
         final data = doc.data();
         final companyName = data['name'] as String;
         final methods = data['paymentMethods'] as List<dynamic>? ?? [];
 
-        final paymentMethods = <PaymentMethods>[];
+        final paymentMethods = <String>[];
         for (var method in methods) {
-          final pm = PaymentMethods.fromString(method.toString());
-          if (pm != null) {
-            paymentMethods.add(pm);
-          }
+          paymentMethods.add(method.toString());
         }
 
         companyPaymentMethods[companyName] = paymentMethods;
@@ -838,8 +837,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               children: [
                                 Padding(
                                   padding: const EdgeInsets.all(20.0),
-                                  child: FutureBuilder<
-                                      Map<String, List<PaymentMethods>>>(
+                                  child:
+                                      FutureBuilder<Map<String, List<String>>>(
                                     future: _getPaymentMethodsByCompany(
                                         user.companies),
                                     builder: (context, paymentSnapshot) {

@@ -30,6 +30,21 @@ enum PaymentMethods {
 
   @override
   String toString() {
-    return name[0].toUpperCase() + name.substring(1);
+    switch (this) {
+      case PaymentMethods.card:
+        return 'Card';
+      case PaymentMethods.account:
+        return 'Account';
+      case PaymentMethods.cash:
+        return 'Cash';
+      case PaymentMethods.payPal:
+        return 'PayPal';
+      case PaymentMethods.googlePay:
+        return 'Google Pay';
+      case PaymentMethods.applePay:
+        return 'Apple Pay';
+      case PaymentMethods.bankTransfer:
+        return 'Bank Transfer';
+    }
   }
 }

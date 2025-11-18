@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../config/db_collections.dart';
-import '../../config/enums/payment_methods.dart';
 import '../../config/enums/user_role.dart';
-import '../../modules/models/user.dart';
-import '../../service/data_service.dart';
+
+// NOTE: Removed PaymentMethods enum import - we're using raw strings now
 
 class AbsolutelyVisibleUserDetailsScreen extends StatefulWidget {
   final String userId;
@@ -28,9 +27,11 @@ class _AbsolutelyVisibleUserDetailsScreenState
   late bool _currentStatus;
   List<String> userCompanies = [];
   bool isLoadingCompanies = false;
-  Map<String, List<PaymentMethods>> companyPaymentMethods = {};
+  // Changed to store payment methods as raw strings from Firestore
+  Map<String, List<String>> companyPaymentMethods = {};
   bool isLoadingPaymentMethods = false;
-  List<PaymentMethods> userPaymentMethods = [];
+  // Store user payment methods as raw strings
+  List<String> userPaymentMethods = [];
 
   @override
   void initState() {
@@ -56,15 +57,12 @@ class _AbsolutelyVisibleUserDetailsScreenState
         final companies = data['companies'] as List<dynamic>? ?? [];
         final companyNames = companies.map((e) => e.toString()).toList();
 
-        // Load user's payment methods directly from user document
+        // Load user's payment methods directly as strings - NO ENUM CONVERSION
         final userMethods = data['paymentMethods'] as List<dynamic>? ?? [];
-        final userPaymentMethodsList = <PaymentMethods>[];
-        for (var method in userMethods) {
-          final pm = PaymentMethods.fromString(method.toString());
-          if (pm != null) {
-            userPaymentMethodsList.add(pm);
-          }
-        }
+        final userPaymentMethodsList = userMethods
+            .map((method) => method.toString())
+            .where((method) => method.isNotEmpty)
+            .toList();
 
         setState(() {
           userCompanies = companyNames;
@@ -72,30 +70,43 @@ class _AbsolutelyVisibleUserDetailsScreenState
           isLoadingCompanies = false;
         });
 
-        // Load payment methods for each company (for companies section)
+        // Load payment methods for each company
         if (companyNames.isNotEmpty) {
+          final Map<String, List<String>> paymentMethodsMap = {};
+
+          // Query all companies at once for better performance
           final companiesSnapshot = await FirebaseFirestore.instance
               .collection(DbCollections.companies)
-              .where('name', whereIn: companyNames)
               .get();
 
-          final Map<String, List<PaymentMethods>> paymentMethodsMap = {};
+          debugPrint('Total companies in database: ${companiesSnapshot.docs.length}');
+          
+          // Create a map of company names to payment methods
+          final companyMap = <String, List<String>>{};
+          for (var doc in companiesSnapshot.docs) {
+            final data = doc.data();
+            final name = data['name'] as String? ?? '';
+            final methods = data['paymentMethods'] as List<dynamic>? ?? [];
+            
+            final paymentMethods = methods
+                .map((method) => method.toString())
+                .where((method) => method.isNotEmpty)
+                .toList();
+            
+            companyMap[name] = paymentMethods;
+            debugPrint('Company: $name has ${paymentMethods.length} payment methods');
+          }
 
-          for (var companyDoc in companiesSnapshot.docs) {
-            final companyData = companyDoc.data();
-            final companyName = companyData['name'] as String;
-            final methods =
-                companyData['paymentMethods'] as List<dynamic>? ?? [];
-
-            final paymentMethods = <PaymentMethods>[];
-            for (var method in methods) {
-              final pm = PaymentMethods.fromString(method.toString());
-              if (pm != null) {
-                paymentMethods.add(pm);
-              }
+          // Match user companies with database companies
+          for (final companyName in companyNames) {
+            if (companyMap.containsKey(companyName)) {
+              paymentMethodsMap[companyName] = companyMap[companyName]!;
+              debugPrint('✓ Matched company: $companyName with ${companyMap[companyName]!.length} methods');
+            } else {
+              paymentMethodsMap[companyName] = [];
+              debugPrint('✗ No match for company: $companyName');
+              debugPrint('  Available companies: ${companyMap.keys.join(", ")}');
             }
-
-            paymentMethodsMap[companyName] = paymentMethods;
           }
 
           setState(() {
@@ -136,11 +147,12 @@ class _AbsolutelyVisibleUserDetailsScreenState
             itemCount: userCompanies.length,
             itemBuilder: (context, index) {
               final company = userCompanies[index];
+              final methods = companyPaymentMethods[company] ?? [];
               return ListTile(
                 title: Text(company),
                 subtitle: Text(
-                  companyPaymentMethods[company]?.isNotEmpty == true
-                      ? 'Payment methods: ${companyPaymentMethods[company]!.map((pm) => pm.toString()).join(', ')}'
+                  methods.isNotEmpty
+                      ? 'Payment methods: ${methods.join(', ')}'
                       : 'No payment methods',
                   style: const TextStyle(fontSize: 12),
                 ),
@@ -165,7 +177,6 @@ class _AbsolutelyVisibleUserDetailsScreenState
 
   Future<void> _deactivateCompanyUsers(
       String companyName, BuildContext context) async {
-    // Show confirmation dialog
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -190,7 +201,6 @@ class _AbsolutelyVisibleUserDetailsScreenState
     if (confirm != true) return;
 
     try {
-      // Step 1: Get the company document
       final companiesSnapshot = await FirebaseFirestore.instance
           .collection(DbCollections.companies)
           .where('name', isEqualTo: companyName)
@@ -208,14 +218,12 @@ class _AbsolutelyVisibleUserDetailsScreenState
         return;
       }
 
-      // Step 2: Deactivate the company
       final companyBatch = FirebaseFirestore.instance.batch();
       for (final doc in companiesSnapshot.docs) {
         companyBatch.update(doc.reference, {'isActive': false});
       }
       await companyBatch.commit();
 
-      // Step 3: Get all users in the company and deactivate them, but skip admins and users with other active companies
       final usersSnapshot = await FirebaseFirestore.instance
           .collection(DbCollections.users)
           .where('companies', arrayContains: companyName)
@@ -227,10 +235,8 @@ class _AbsolutelyVisibleUserDetailsScreenState
         final userRole = UserRole.fromString(userData['role'] ?? 'unknown');
         final userCompanies = List<String>.from(userData['companies'] ?? []);
 
-        // Skip admins
         if (userRole == UserRole.admin) continue;
 
-        // Check if user has other active companies
         bool hasOtherActiveCompany = false;
         for (final company in userCompanies) {
           if (company != companyName) {
@@ -246,16 +252,13 @@ class _AbsolutelyVisibleUserDetailsScreenState
           }
         }
 
-        // Deactivate user only if they don't have other active companies
         if (!hasOtherActiveCompany) {
           userBatch.update(userDoc.reference, {'isActive': false});
         }
       }
       await userBatch.commit();
 
-      // Update local status if current user is affected
       if (userCompanies.contains(companyName)) {
-        // Check if current user has other active companies
         bool hasOtherActiveCompany = false;
         for (final company in userCompanies) {
           if (company != companyName) {
@@ -320,7 +323,6 @@ class _AbsolutelyVisibleUserDetailsScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Greeting Section
             Container(
               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
               decoration: BoxDecoration(
@@ -404,14 +406,12 @@ class _AbsolutelyVisibleUserDetailsScreenState
                       ),
                     ),
 
-                    // Loading indicator
                     if (isLoadingCompanies || isLoadingPaymentMethods)
                       const Padding(
                         padding: EdgeInsets.only(top: 16),
                         child: CircularProgressIndicator(),
                       ),
 
-                    // Companies and Payment Methods Section
                     if (!isLoadingCompanies &&
                         !isLoadingPaymentMethods &&
                         userCompanies.isNotEmpty) ...[
@@ -443,7 +443,6 @@ class _AbsolutelyVisibleUserDetailsScreenState
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Company Name
                               Row(
                                 children: [
                                   Container(
@@ -471,8 +470,6 @@ class _AbsolutelyVisibleUserDetailsScreenState
                                 ],
                               ),
                               const SizedBox(height: 12),
-
-                              // Payment Methods
                               const Text(
                                 'Payment Methods:',
                                 style: TextStyle(
@@ -495,7 +492,7 @@ class _AbsolutelyVisibleUserDetailsScreenState
                                 Wrap(
                                   spacing: 8,
                                   runSpacing: 8,
-                                  children: paymentMethods.map((method) {
+                                  children: paymentMethods.map((methodString) {
                                     return Chip(
                                       avatar: const Icon(
                                         Icons.payment,
@@ -503,7 +500,7 @@ class _AbsolutelyVisibleUserDetailsScreenState
                                         color: Colors.blue,
                                       ),
                                       label: Text(
-                                        method.toString(),
+                                        methodString, // Raw string from Firestore
                                         style: const TextStyle(fontSize: 12),
                                       ),
                                       backgroundColor:
@@ -521,7 +518,6 @@ class _AbsolutelyVisibleUserDetailsScreenState
                       }).toList(),
                     ],
 
-                    // No companies message
                     if (!isLoadingCompanies && userCompanies.isEmpty) ...[
                       const SizedBox(height: 16),
                       const Divider(),
@@ -535,7 +531,6 @@ class _AbsolutelyVisibleUserDetailsScreenState
                       ),
                     ],
 
-                    // User Payment Methods Section
                     if (!isLoadingCompanies && !isLoadingPaymentMethods) ...[
                       const SizedBox(height: 24),
                       const Divider(),
@@ -561,7 +556,7 @@ class _AbsolutelyVisibleUserDetailsScreenState
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: userPaymentMethods.map((method) {
+                          children: userPaymentMethods.map((methodString) {
                             return Chip(
                               avatar: const Icon(
                                 Icons.payment,
@@ -569,7 +564,7 @@ class _AbsolutelyVisibleUserDetailsScreenState
                                 color: Colors.green,
                               ),
                               label: Text(
-                                method.toString(),
+                                methodString, // Raw string from Firestore
                                 style: const TextStyle(fontSize: 12),
                               ),
                               backgroundColor: Colors.green.withOpacity(0.15),
@@ -588,7 +583,6 @@ class _AbsolutelyVisibleUserDetailsScreenState
 
             const SizedBox(height: 32),
 
-            // Warning Card
             if (userCompanies.isNotEmpty)
               Container(
                 padding: const EdgeInsets.all(12),
@@ -615,11 +609,9 @@ class _AbsolutelyVisibleUserDetailsScreenState
                 ),
               ),
 
-            // Action Buttons Row
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Deactivate Company Button
                 SizedBox(
                   width: 140,
                   child: ElevatedButton(
@@ -641,7 +633,6 @@ class _AbsolutelyVisibleUserDetailsScreenState
 
                 const SizedBox(width: 16),
 
-                // Status Toggle Button
                 SizedBox(
                   width: 140,
                   child: ElevatedButton(
@@ -668,7 +659,6 @@ class _AbsolutelyVisibleUserDetailsScreenState
 
             const SizedBox(height: 24),
 
-            // Back Button
             SizedBox(
               width: 200,
               child: OutlinedButton(
