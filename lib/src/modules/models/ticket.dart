@@ -11,6 +11,7 @@ class Ticket {
     required this.status,
     required this.publisher,
     required this.createdDate,
+    this.lastUpdate,
     this.files = const [],
   });
 
@@ -20,6 +21,7 @@ class Ticket {
   final TicketStatus status;
   final String publisher;
   final DateTime? createdDate;
+  final DateTime? lastUpdate;
   final List<TicketFile> files;
 
   Ticket copyWith({List<TicketFile>? files}) => Ticket(
@@ -29,6 +31,7 @@ class Ticket {
         status: status,
         publisher: publisher,
         createdDate: createdDate,
+        lastUpdate: lastUpdate,
         files: files ?? this.files,
       );
 
@@ -45,6 +48,7 @@ class Ticket {
       status: TicketStatus.fromString(json['status'] ?? "Unknown"),
       publisher: publisher ?? "Unknown Publisher",
       createdDate: (json['createdDate'] as Timestamp?)?.toDate(),
+      lastUpdate: (json['lastUpdate'] as Timestamp?)?.toDate(),
       files: files,
     );
   }
@@ -57,6 +61,7 @@ class Ticket {
       'status': status.toString(),
       'publisher': publisher,
       'createdDate': createdDate?.toIso8601String(),
+      'lastUpdate': lastUpdate?.toIso8601String(),
     };
   }
 }

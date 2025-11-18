@@ -15,7 +15,7 @@ import '../../config/db_collections.dart';
 
 const Color primaryColor = Color(0xFF44564A);
 const Color backgroundColor = Color(0xFFF5F5F5);
-const Color cardColor = Colors.white;
+const Color cardColor = Color(0xFFBCD3B9);
 final TextStyle boldTextStyle = TextStyle(
   fontWeight: FontWeight.bold,
   color: primaryColor,
@@ -52,6 +52,8 @@ class _TicketsScreenState extends State<TicketsScreen> {
   ];
   Timer? _debounce;
   bool _isExporting = false;
+  Set<String> selectedTicketIds = {};
+  bool selectAll = false;
 
   @override
   void initState() {
@@ -295,29 +297,51 @@ class _TicketsScreenState extends State<TicketsScreen> {
       }
 
       // Save file
+      // Save file
       var fileBytes = excel.save();
       if (fileBytes != null) {
-        final directory = await getApplicationDocumentsDirectory();
-        final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-        final statusFilter =
-            selectedFilterValue != null ? '_${selectedFilterValue}' : '_All';
-        final filePath =
-            '${directory.path}/tickets_export$statusFilter$timestamp.xlsx';
+        try {
+          final directory = await getApplicationDocumentsDirectory();
+          final timestamp =
+              DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+          final statusFilter =
+              selectedFilterValue != null ? '_${selectedFilterValue}' : '_All';
+          final filePath =
+              '${directory.path}/tickets_export$statusFilter$timestamp.xlsx';
 
-        File(filePath)
-          ..createSync(recursive: true)
-          ..writeAsBytesSync(fileBytes);
+          File(filePath)
+            ..createSync(recursive: true)
+            ..writeAsBytesSync(fileBytes);
 
-        _showSnackBar('Excel file exported successfully to: $filePath');
+          _showSnackBar('Excel file exported successfully to: $filePath');
 
-        // Optional: Open the file location
-        if (Platform.isAndroid || Platform.isIOS) {
-          _showSnackBar('File saved to Documents folder');
+          // Optional: Open the file location
+          if (Platform.isAndroid || Platform.isIOS) {
+            _showSnackBar('File saved to Documents folder');
+          }
+        } catch (e) {
+          // Fallback for platforms where getApplicationDocumentsDirectory fails
+          try {
+            final directory = Directory.systemTemp;
+            final timestamp =
+                DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+            final statusFilter = selectedFilterValue != null
+                ? '_${selectedFilterValue}'
+                : '_All';
+            final filePath =
+                '${directory.path}/tickets_export$statusFilter$timestamp.xlsx';
+
+            File(filePath)
+              ..createSync(recursive: true)
+              ..writeAsBytesSync(fileBytes);
+
+            _showSnackBar(
+                'Excel file exported successfully to temp folder: $filePath');
+          } catch (fallbackError) {
+            _showSnackBar('Failed to save file: $fallbackError');
+          }
         }
       }
-    } catch (e) {
-      _showSnackBar('Failed to export Excel: $e');
-      debugPrint('Export error: $e');
     } finally {
       setState(() {
         _isExporting = false;
@@ -331,18 +355,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
       onWillPop: _handleWillPop,
       child: Scaffold(
         backgroundColor: backgroundColor,
-        appBar: AppBar(
-          title: Text(
-            selectedTicketId == null ? 'Tickets' : 'Ticket Details',
-            style: boldTextStyle.copyWith(fontSize: 24),
-          ),
-          leading: selectedTicketId == null
-              ? null
-              : IconButton(
-                  icon: const Icon(Icons.arrow_back, color: primaryColor),
-                  onPressed: _handleBackButton,
-                ),
-        ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -432,6 +444,23 @@ class _TicketsScreenState extends State<TicketsScreen> {
                   ),
                 ),
               ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Checkbox(
+                  value: selectAll,
+                  onChanged: (bool? value) {
+                    setState(() {
+                      selectAll = value ?? false;
+                      if (!selectAll) {
+                        selectedTicketIds.clear();
+                      }
+                    });
+                  },
+                ),
+                const Text('Select All'),
+              ],
+            ),
           ],
         ),
       ),
@@ -440,12 +469,21 @@ class _TicketsScreenState extends State<TicketsScreen> {
 
   Future<void> _exportCurrentView() async {
     // Get the current filtered tickets
-    final tickets = await _getFilteredTicketsStream().first;
-    if (tickets.isEmpty) {
+    final allTickets = await _getFilteredTicketsStream().first;
+    List<Map<String, dynamic>> ticketsToExport;
+    if (selectAll) {
+      ticketsToExport = allTickets;
+    } else if (selectedTicketIds.isNotEmpty) {
+      ticketsToExport =
+          allTickets.where((t) => selectedTicketIds.contains(t['id'])).toList();
+    } else {
+      ticketsToExport = allTickets;
+    }
+    if (ticketsToExport.isEmpty) {
       _showSnackBar('No tickets to export');
       return;
     }
-    await _exportToExcel(tickets);
+    await _exportToExcel(ticketsToExport);
   }
 
   Widget _buildStatusDropdown() {
@@ -529,6 +567,8 @@ class _TicketsScreenState extends State<TicketsScreen> {
       selectedFilter = 'title';
       selectedFilterValue = null;
       selectedDateRange = null;
+      selectedTicketIds.clear();
+      selectAll = false;
     });
   }
 
@@ -668,6 +708,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
 
             return Card(
               elevation: 2,
+              color: cardColor,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
               ),
@@ -686,6 +727,26 @@ class _TicketsScreenState extends State<TicketsScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      Checkbox(
+                        value: selectAll ||
+                            selectedTicketIds.contains(ticket['id']),
+                        onChanged: (bool? value) {
+                          setState(() {
+                            if (selectAll) {
+                              selectAll = false;
+                              if (value == true) {
+                                selectedTicketIds.add(ticket['id']);
+                              }
+                            } else {
+                              if (value == true) {
+                                selectedTicketIds.add(ticket['id']);
+                              } else {
+                                selectedTicketIds.remove(ticket['id']);
+                              }
+                            }
+                          });
+                        },
+                      ),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -746,6 +807,14 @@ class _TicketsScreenState extends State<TicketsScreen> {
                             if (ticket['latestUploadDate'] != null)
                               Text(
                                 'Latest Upload: ${DateFormat('MMM dd, yyyy - HH:mm').format(ticket['latestUploadDate'] as DateTime)}',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
+                                ),
+                              ),
+                            if (ticket['lastUpdate'] != null)
+                              Text(
+                                'Last Update: ${DateFormat('MMM dd, yyyy - HH:mm').format((ticket['lastUpdate'] as Timestamp).toDate())}',
                                 style: TextStyle(
                                   color: Colors.grey[600],
                                   fontSize: 12,
@@ -851,9 +920,19 @@ class _TicketsScreenState extends State<TicketsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                selectedTicketData?['title'] ?? 'No Title',
-                style: boldTextStyle.copyWith(fontSize: 24),
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: primaryColor),
+                    onPressed: _handleBackButton,
+                  ),
+                  Expanded(
+                    child: Text(
+                      selectedTicketData?['title'] ?? 'No Title',
+                      style: boldTextStyle.copyWith(fontSize: 24),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               Text(
@@ -872,6 +951,14 @@ class _TicketsScreenState extends State<TicketsScreen> {
               if (selectedTicketData?['latestUploadDate'] != null)
                 Text(
                   'Latest Upload: ${DateFormat('MMM dd, yyyy - HH:mm').format(selectedTicketData!['latestUploadDate'] as DateTime)}',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 14,
+                  ),
+                ),
+              if (selectedTicketData?['lastUpdate'] != null)
+                Text(
+                  'Last Update: ${DateFormat('MMM dd, yyyy - HH:mm').format((selectedTicketData!['lastUpdate'] as Timestamp).toDate())}',
                   style: TextStyle(
                     color: Colors.grey[600],
                     fontSize: 14,
@@ -1044,7 +1131,10 @@ class _TicketsScreenState extends State<TicketsScreen> {
     FirebaseFirestore.instance
         .collection(DbCollections.tickets)
         .doc(ticketId)
-        .update({'assignedAdminId': adminId}).then((_) {
+        .update({
+      'assignedAdminId': adminId,
+      'lastUpdate': FieldValue.serverTimestamp(),
+    }).then((_) {
       _showSnackBar(adminId == null
           ? 'Admin unassigned successfully'
           : 'Admin assigned successfully');
@@ -1057,7 +1147,10 @@ class _TicketsScreenState extends State<TicketsScreen> {
     FirebaseFirestore.instance
         .collection(DbCollections.tickets)
         .doc(ticketId)
-        .update({'status': newStatus}).then((_) {
+        .update({
+      'status': newStatus,
+      'lastUpdate': FieldValue.serverTimestamp(),
+    }).then((_) {
       setState(() {
         if (selectedTicketData != null) {
           selectedTicketData!['status'] = newStatus;
@@ -1073,7 +1166,10 @@ class _TicketsScreenState extends State<TicketsScreen> {
     FirebaseFirestore.instance
         .collection(DbCollections.tickets)
         .doc(ticketId)
-        .update({'reference': reference}).then((_) {
+        .update({
+      'reference': reference,
+      'lastUpdate': FieldValue.serverTimestamp(),
+    }).then((_) {
       setState(() {
         if (selectedTicketData != null) {
           selectedTicketData!['reference'] = reference;
