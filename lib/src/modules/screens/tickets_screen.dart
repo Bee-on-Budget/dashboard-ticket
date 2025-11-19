@@ -604,8 +604,9 @@ class _TicketsScreenState extends State<TicketsScreen> {
       return;
     }
 
-    // Parallel file loading
+    // Parallel file loading - check both Firestore and Storage
     final filesFutures = ticketsSnapshot.docs.map((ticketDoc) async {
+      // First, try to get files from Firestore subcollection
       final filesSnapshot = await FirebaseFirestore.instance
           .collection(DbCollections.tickets)
           .doc(ticketDoc.id)
@@ -614,16 +615,45 @@ class _TicketsScreenState extends State<TicketsScreen> {
           .get();
 
       DateTime? latestUploadDate;
+      List<String> fileIds = [];
+      int fileCount = 0;
+
       if (filesSnapshot.docs.isNotEmpty) {
+        // Files exist in Firestore
+        fileIds = filesSnapshot.docs.map((fileDoc) => fileDoc.id).toList();
+        fileCount = filesSnapshot.docs.length;
+
         final latestFile = filesSnapshot.docs.first;
         latestUploadDate =
             (latestFile.data()['uploadedAt'] as Timestamp?)?.toDate();
+      } else {
+        // Try to get files from Firebase Storage
+        try {
+          final files = await DataService.getTicketFiles(ticketDoc.id);
+          fileIds = files
+              .map((file) => file['fileId'] ?? '')
+              .where((id) => id.isNotEmpty)
+              .toList();
+          fileCount = files.length;
+
+          // Get latest upload date from Storage metadata if available
+          if (files.isNotEmpty) {
+            // Since Storage doesn't have uploadedAt by default, we'll skip this
+            // or you can add metadata when uploading files
+            latestUploadDate = null;
+          }
+        } catch (e) {
+          debugPrint(
+              'Error fetching files from storage for ticket ${ticketDoc.id}: $e');
+          fileIds = [];
+          fileCount = 0;
+        }
       }
 
       return {
         'ticketId': ticketDoc.id,
-        'fileCount': filesSnapshot.docs.length,
-        'fileIds': filesSnapshot.docs.map((fileDoc) => fileDoc.id).toList(),
+        'fileCount': fileCount,
+        'fileIds': fileIds,
         'latestUploadDate': latestUploadDate,
       };
     });
@@ -633,6 +663,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
       for (var result in filesResults)
         result['ticketId'] as String: {
           'fileIds': result['fileIds'] as List<String>,
+          'fileCount': result['fileCount'] as int,
           'latestUploadDate': result['latestUploadDate'] as DateTime?,
         }
     };
@@ -644,6 +675,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
         if (data is Map<String, dynamic>) ...data,
         'id': doc.id,
         'fileIds': filesMap[doc.id]?['fileIds'] ?? <String>[],
+        'fileCount': filesMap[doc.id]?['fileCount'] ?? 0,
         'latestUploadDate': filesMap[doc.id]?['latestUploadDate'],
       };
     }).toList();
@@ -908,12 +940,14 @@ class _TicketsScreenState extends State<TicketsScreen> {
     bool isAssignedToCurrentUser =
         selectedTicketData?['assignedAdminId'] == currentUserUid;
 
-    return StreamBuilder<List<Map<String, String>>>(
-      stream: DataService.getTicketFiles(selectedTicketId!),
+    return FutureBuilder<List<Map<String, String>>>(
+      future: DataService.getTicketFiles(selectedTicketId!),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
+
+        final files = snapshot.data ?? [];
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -1081,8 +1115,8 @@ class _TicketsScreenState extends State<TicketsScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              if (snapshot.hasData && snapshot.data!.isNotEmpty)
-                ...snapshot.data!.map((file) {
+              if (files.isNotEmpty)
+                ...files.map((file) {
                   return Card(
                     elevation: 2,
                     shape: RoundedRectangleBorder(
@@ -1118,7 +1152,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                     ),
                   );
                 }),
-              if (!snapshot.hasData || snapshot.data!.isEmpty)
+              if (files.isEmpty)
                 const Center(child: Text('No attachments available')),
             ],
           ),

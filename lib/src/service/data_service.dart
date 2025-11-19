@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 import '../modules/models/ticket_file.dart';
 import '../modules/models/ticket.dart';
@@ -9,6 +10,7 @@ import '../config/enums/payment_methods.dart';
 
 class DataService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static final FirebaseStorage _storage = FirebaseStorage.instance;
 
   static Stream<List<User>> getUsers() {
     return _firestore
@@ -98,22 +100,88 @@ class DataService {
     });
   }
 
-  static Stream<List<Map<String, String>>> getTicketFiles(String ticketId) {
-    return _firestore
-        .collection(DbCollections.tickets)
-        .doc(ticketId)
-        .collection('files')
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        return {
-          'fileId': doc.id,
-          'url': data['url'] as String,
-          'fileName': data['fileName'] as String,
-        };
+  // UPDATED: Fetch files from Firebase Storage
+  static Future<List<Map<String, String>>> getTicketFiles(String ticketId) async {
+    try {
+      // First, try to get files from Firestore subcollection
+      final firestoreSnapshot = await _firestore
+          .collection(DbCollections.tickets)
+          .doc(ticketId)
+          .collection('files')
+          .get();
+
+      if (firestoreSnapshot.docs.isNotEmpty) {
+        // Files exist in Firestore
+        return firestoreSnapshot.docs.map((doc) {
+          final data = doc.data();
+          return {
+            'fileId': doc.id,
+            'url': data['url'] as String? ?? '',
+            'fileName': data['fileName'] as String? ?? 'Unknown File',
+          };
+        }).toList();
+      } else {
+        // Try to get files from Firebase Storage
+        final storageRef = _storage.ref().child('tickets/$ticketId/files');
+        final listResult = await storageRef.listAll();
+
+        if (listResult.items.isNotEmpty) {
+          final filesFutures = listResult.items.map((item) async {
+            final url = await item.getDownloadURL();
+            return {
+              'fileId': item.name,
+              'url': url,
+              'fileName': item.name,
+            };
+          }).toList();
+
+          final files = await Future.wait(filesFutures);
+          return files;
+        } else {
+          return [];
+        }
+      }
+    } catch (e) {
+      print('Error fetching ticket files: $e');
+      return [];
+    }
+  }
+
+  // ALTERNATIVE: Get files from Storage with better error handling
+  static Future<List<Map<String, String>>> getTicketFilesFromStorage(String ticketId) async {
+    try {
+      final storageRef = _storage.ref().child('tickets/$ticketId/files');
+      final listResult = await storageRef.listAll();
+
+      if (listResult.items.isEmpty) {
+        return [];
+      }
+
+      final filesFutures = listResult.items.map((item) async {
+        try {
+          final url = await item.getDownloadURL();
+          final metadata = await item.getMetadata();
+          
+          return {
+            'fileId': item.name,
+            'url': url,
+            'fileName': metadata.customMetadata?['originalName'] ?? item.name,
+          };
+        } catch (e) {
+          print('Error getting file ${item.name}: $e');
+          return {
+            'fileId': item.name,
+            'url': '',
+            'fileName': item.name,
+          };
+        }
       }).toList();
-    });
+
+      return await Future.wait(filesFutures);
+    } catch (e) {
+      print('Error fetching files from storage: $e');
+      return [];
+    }
   }
 
   static Stream<List<Map<String, dynamic>>> getFileComments(
@@ -126,9 +194,10 @@ class DataService {
         .snapshots()
         .map((doc) {
       final data = doc.data();
-      return (data?['comments'] as List<dynamic>)
-          .map((comment) => Map<String, dynamic>.from(comment))
-          .toList();
+      return (data?['comments'] as List<dynamic>?)
+              ?.map((comment) => Map<String, dynamic>.from(comment))
+              .toList() ??
+          [];
     });
   }
 
