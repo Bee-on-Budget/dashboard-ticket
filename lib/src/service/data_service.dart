@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
@@ -100,8 +102,9 @@ class DataService {
     });
   }
 
-  // UPDATED: Fetch files from Firebase Storage
-  static Future<List<Map<String, String>>> getTicketFiles(String ticketId) async {
+  // UPDATED: Fetch files - prioritize Firestore, gracefully handle Storage errors
+  static Future<List<Map<String, String>>> getTicketFiles(
+      String ticketId) async {
     try {
       // First, try to get files from Firestore subcollection
       final firestoreSnapshot = await _firestore
@@ -111,7 +114,9 @@ class DataService {
           .get();
 
       if (firestoreSnapshot.docs.isNotEmpty) {
-        // Files exist in Firestore
+        // Files exist in Firestore - this is the primary source
+        print(
+            'Found ${firestoreSnapshot.docs.length} files in Firestore for ticket $ticketId');
         return firestoreSnapshot.docs.map((doc) {
           final data = doc.data();
           return {
@@ -120,35 +125,69 @@ class DataService {
             'fileName': data['fileName'] as String? ?? 'Unknown File',
           };
         }).toList();
-      } else {
-        // Try to get files from Firebase Storage
-        final storageRef = _storage.ref().child('tickets/$ticketId/files');
-        final listResult = await storageRef.listAll();
+      }
 
-        if (listResult.items.isNotEmpty) {
-          final filesFutures = listResult.items.map((item) async {
+      // Only try Storage if Firestore has no files
+      print('No files in Firestore for ticket $ticketId, checking Storage...');
+
+      try {
+        // Check if Storage is available
+        final storageRef = _storage.ref('tickets/$ticketId/files');
+        final listResult = await storageRef.listAll().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            print('Storage timeout for ticket $ticketId');
+            throw TimeoutException('Storage listing timed out');
+          },
+        );
+
+        if (listResult.items.isEmpty) {
+          print('No files found in Storage for ticket $ticketId');
+          return [];
+        }
+
+        print(
+            'Found ${listResult.items.length} files in Storage for ticket $ticketId');
+
+        final filesFutures = listResult.items.map((item) async {
+          try {
             final url = await item.getDownloadURL();
+            final metadata = await item.getMetadata();
+
             return {
               'fileId': item.name,
               'url': url,
-              'fileName': item.name,
+              'fileName': metadata.customMetadata?['fileName'] ??
+                  metadata.name ??
+                  item.name,
             };
-          }).toList();
+          } catch (e) {
+            print('Error getting file ${item.name}: $e');
+            return null;
+          }
+        }).toList();
 
-          final files = await Future.wait(filesFutures);
-          return files;
-        } else {
-          return [];
-        }
+        final files = await Future.wait(filesFutures);
+        return files
+            .where((file) => file != null && file['url']!.isNotEmpty)
+            .cast<Map<String, String>>()
+            .toList();
+      } on TimeoutException catch (e) {
+        print('Storage timeout: $e');
+        return [];
+      } on FirebaseException catch (e) {
+        print('Firebase Storage error: ${e.code} - ${e.message}');
+        return [];
       }
     } catch (e) {
-      print('Error fetching ticket files: $e');
+      print('Error in getTicketFiles: $e');
       return [];
     }
   }
 
   // ALTERNATIVE: Get files from Storage with better error handling
-  static Future<List<Map<String, String>>> getTicketFilesFromStorage(String ticketId) async {
+  static Future<List<Map<String, String>>> getTicketFilesFromStorage(
+      String ticketId) async {
     try {
       final storageRef = _storage.ref().child('tickets/$ticketId/files');
       final listResult = await storageRef.listAll();
@@ -161,7 +200,7 @@ class DataService {
         try {
           final url = await item.getDownloadURL();
           final metadata = await item.getMetadata();
-          
+
           return {
             'fileId': item.name,
             'url': url,

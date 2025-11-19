@@ -158,7 +158,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
       var excel = Excel.createExcel();
       Sheet sheetObject = excel['Tickets'];
 
-      // Add headers - include Payment Methods
+      // Add headers - include Payment Method
       List<String> headers = [
         'Title',
         'Reference',
@@ -167,7 +167,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
         'Status',
         'Published By',
         'Company',
-        'Payment Methods', // New column for payment methods
+        'Payment Method', // Column for payment method from ticket
         'Assigned Admin',
         'Created Date',
         'Latest Upload Date',
@@ -213,38 +213,8 @@ class _TicketsScreenState extends State<TicketsScreen> {
             ? userCompanies[ticket['userId']]!.join(', ')
             : 'N/A';
 
-        // NEW: Fetch payment methods for the company
-        String paymentMethods = 'N/A';
-        if (userCompanies[ticket['userId']]?.isNotEmpty == true) {
-          try {
-            // Get the first company (you might want to adjust this logic if a user can belong to multiple companies)
-            final companyName = userCompanies[ticket['userId']]!.first;
-
-            // Query Firestore for the company document
-            final companySnapshot = await FirebaseFirestore.instance
-                .collection(DbCollections.companies)
-                .where('name', isEqualTo: companyName)
-                .limit(1)
-                .get();
-
-            if (companySnapshot.docs.isNotEmpty) {
-              final companyData = companySnapshot.docs.first.data();
-              final List<dynamic> paymentMethodsList =
-                  companyData['paymentMethods'] ?? [];
-
-              if (paymentMethodsList.isNotEmpty) {
-                paymentMethods = paymentMethodsList
-                    .map((method) => method.toString())
-                    .join(', ');
-              } else {
-                paymentMethods = 'No payment methods';
-              }
-            }
-          } catch (e) {
-            debugPrint('Error fetching payment methods: $e');
-            paymentMethods = 'Error loading payment methods';
-          }
-        }
+        // Get payment method directly from ticket document
+        String paymentMethod = ticket['paymentMethod']?.toString() ?? 'N/A';
 
         String assignedAdminName = 'Unassigned';
         if (ticket['assignedAdminId'] != null) {
@@ -277,7 +247,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
           ticket['status'] ?? 'No Status',
           publisherName,
           companyName,
-          paymentMethods, // Add payment methods here
+          paymentMethod, // Add payment method from ticket
           assignedAdminName,
           createdDate,
           latestUploadDate,
@@ -296,7 +266,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
         sheetObject.setColumnWidth(i, 20);
       }
 
-      // Save file
       // Save file
       var fileBytes = excel.save();
       if (fileBytes != null) {
@@ -807,6 +776,17 @@ class _TicketsScreenState extends State<TicketsScreen> {
                                 'Company: $companyName',
                                 style: TextStyle(color: Colors.grey[600]),
                               ),
+                            // Display payment method from ticket
+                            if (ticket['paymentMethod'] != null &&
+                                ticket['paymentMethod'].toString().isNotEmpty)
+                              Text(
+                                'Payment Method: ${ticket['paymentMethod']}',
+                                style: TextStyle(
+                                  color: Colors.grey[700],
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 13,
+                                ),
+                              ),
                             Text(
                               'Status: ${ticket['status'] ?? 'No Status'}',
                               style: TextStyle(
@@ -817,7 +797,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            if (ticket['ref_id']?.isNotEmpty)
+                            if (ticket['ref_id']?.isNotEmpty == true)
                               Padding(
                                 padding: const EdgeInsets.only(top: 4),
                                 child: Text(
@@ -999,6 +979,44 @@ class _TicketsScreenState extends State<TicketsScreen> {
                   ),
                 ),
               const SizedBox(height: 16),
+              // Display Payment Method in ticket detail
+              if (selectedTicketData?['paymentMethod'] != null &&
+                  selectedTicketData!['paymentMethod'].toString().isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.payment,
+                          color: primaryColor,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Payment Method: ',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        Text(
+                          '${selectedTicketData!['paymentMethod']}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               TextField(
                 controller: referenceController,
                 decoration: InputDecoration(

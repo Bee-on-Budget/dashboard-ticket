@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'ticket_file.dart';
 import '../../config/enums/ticket_status.dart';
+import '../../config/enums/payment_methods.dart';
 
 class Ticket {
   const Ticket({
@@ -13,6 +14,7 @@ class Ticket {
     required this.createdDate,
     this.lastUpdate,
     this.files = const [],
+    this.paymentMethod,
   });
 
   final String ticketId;
@@ -23,6 +25,7 @@ class Ticket {
   final DateTime? createdDate;
   final DateTime? lastUpdate;
   final List<TicketFile> files;
+  final PaymentMethods? paymentMethod;
 
   Ticket copyWith({List<TicketFile>? files}) => Ticket(
         ticketId: ticketId,
@@ -62,6 +65,7 @@ class Ticket {
       'publisher': publisher,
       'createdDate': createdDate?.toIso8601String(),
       'lastUpdate': lastUpdate?.toIso8601String(),
+      if (paymentMethod != null) 'paymentMethod': paymentMethod!.toString(),
     };
   }
 }
