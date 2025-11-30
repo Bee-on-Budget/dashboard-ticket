@@ -14,6 +14,7 @@ class CreateCompanyScreen extends StatefulWidget {
 
 class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _paymentMethodController =
@@ -25,6 +26,7 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _descriptionController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _paymentMethodController.dispose();
@@ -33,6 +35,7 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
 
   Future<void> _createCompany() async {
     final name = _nameController.text.trim();
+    final description = _descriptionController.text.trim();
     final email = _emailController.text.trim();
     final phone = _phoneController.text.trim();
 
@@ -54,6 +57,7 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
       final company = Company(
         id: companyId,
         name: name,
+        description: description.isEmpty ? null : description,
         paymentMethods: _paymentMethods,
         createdAt: DateTime.now(),
         isActive: true,
@@ -200,6 +204,13 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
         _buildTextField(_nameController, 'Company Name', Icons.business),
         const SizedBox(height: 16),
         _buildTextField(
+          _descriptionController,
+          'Description',
+          Icons.description,
+          maxLines: 3,
+        ),
+        const SizedBox(height: 16),
+        _buildTextField(
           _emailController,
           'Email',
           Icons.email,
@@ -227,9 +238,11 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
     String label,
     IconData icon, {
     TextInputType? keyboardType,
+    int maxLines = 1,
   }) {
     return TextField(
       controller: controller,
+      maxLines: maxLines,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(fontWeight: FontWeight.bold),

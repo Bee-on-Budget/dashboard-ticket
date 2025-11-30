@@ -17,10 +17,10 @@ class MergedScreen extends StatefulWidget {
   State<MergedScreen> createState() => MergedScreenState();
 }
 
-// MergedScreen.dart
 class MergedScreenState extends State<MergedScreen> {
-  int _currentIndex = 0; // Private variable
+  int _currentIndex = 0;
   String? _userName;
+  bool _isUsersExpanded = false;
 
   @override
   void initState() {
@@ -57,7 +57,6 @@ class MergedScreenState extends State<MergedScreen> {
     }
   }
 
-  // Public method to update _currentIndex
   void updateCurrentIndex(int index) {
     setState(() {
       _currentIndex = index;
@@ -156,7 +155,7 @@ class MergedScreenState extends State<MergedScreen> {
                     if (_userName != null) ...[
                       SizedBox(height: 8),
                       Text(
-                        'Hi ${_userName}!',
+                        'Hi $_userName!',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -168,9 +167,8 @@ class MergedScreenState extends State<MergedScreen> {
                 ),
               ),
               _buildDrawerItem(Icons.dashboard, 'Dashboard', 0),
-              _buildDrawerItem(Icons.person_add, 'Create User', 1),
+              _buildUsersCategory(),
               _buildDrawerItem(Icons.list, 'Tickets', 2),
-              _buildDrawerItem(Icons.person, 'Profile', 3),
               _buildDrawerItem(Icons.business, 'Companies', 4),
               const Divider(color: Colors.white54),
               _buildDrawerItem(Icons.logout, 'Logout', 5, isLogout: true),
@@ -182,6 +180,39 @@ class MergedScreenState extends State<MergedScreen> {
         index: _currentIndex,
         children: _pages,
       ),
+    );
+  }
+
+  Widget _buildUsersCategory() {
+    return Column(
+      children: [
+        ListTile(
+          leading: Icon(
+            Icons.people,
+            color: Colors.white,
+          ),
+          title: Text(
+            'Users',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.white,
+            ),
+          ),
+          trailing: Icon(
+            _isUsersExpanded ? Icons.expand_less : Icons.expand_more,
+            color: Colors.white,
+          ),
+          onTap: () {
+            setState(() {
+              _isUsersExpanded = !_isUsersExpanded;
+            });
+          },
+        ),
+        if (_isUsersExpanded) ...[
+          _buildSubDrawerItem(Icons.person_add, 'Create User', 1),
+          _buildSubDrawerItem(Icons.person, 'Profile', 3),
+        ],
+      ],
     );
   }
 
@@ -209,6 +240,32 @@ class MergedScreenState extends State<MergedScreen> {
           Navigator.pop(context);
         }
       },
+    );
+  }
+
+  Widget _buildSubDrawerItem(IconData icon, String title, int index) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 32.0),
+      child: ListTile(
+        leading: Icon(
+          icon,
+          color: Colors.white70,
+          size: 20,
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.white70,
+          ),
+        ),
+        onTap: () {
+          setState(() {
+            _currentIndex = index;
+          });
+          Navigator.pop(context);
+        },
+      ),
     );
   }
 

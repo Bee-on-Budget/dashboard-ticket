@@ -36,7 +36,12 @@ class _TicketsScreenState extends State<TicketsScreen> {
   String? selectedTicketId;
   Map<String, dynamic>? selectedTicketData;
   String? selectedFilterValue;
-
+  int _currentPage = 1;
+  int _itemsPerPage = 10;
+  List<int> _pageSizeOptions = [5, 10, 20, 30];
+  List<Map<String, dynamic>> _allTickets = [];
+  int _totalTickets = 0;
+  String? _scrollToTicketId;
   List<Map<String, dynamic>> admins = [];
   Map<String, dynamic> users = {};
   Map<String, List<String>> userCompanies = {};
@@ -127,9 +132,11 @@ class _TicketsScreenState extends State<TicketsScreen> {
 
   Future<bool> _handleWillPop() async {
     if (selectedTicketId != null) {
+      final ticketId = selectedTicketId;
       setState(() {
         selectedTicketId = null;
         selectedTicketData = null;
+        _scrollToTicketId = ticketId;
       });
       return false;
     }
@@ -138,9 +145,11 @@ class _TicketsScreenState extends State<TicketsScreen> {
 
   void _handleBackButton() {
     if (selectedTicketId != null) {
+      final ticketId = selectedTicketId;
       setState(() {
         selectedTicketId = null;
         selectedTicketData = null;
+        _scrollToTicketId = ticketId; // Set flag to scroll to this ticket
       });
     } else {
       Navigator.of(context).pop();
@@ -342,6 +351,25 @@ class _TicketsScreenState extends State<TicketsScreen> {
     );
   }
 
+  Future<void> _exportCurrentView() async {
+    // Get the current filtered tickets
+    final allTickets = await _getFilteredTicketsStream().first;
+    List<Map<String, dynamic>> ticketsToExport;
+    if (selectAll) {
+      ticketsToExport = allTickets;
+    } else if (selectedTicketIds.isNotEmpty) {
+      ticketsToExport =
+          allTickets.where((t) => selectedTicketIds.contains(t['id'])).toList();
+    } else {
+      ticketsToExport = allTickets;
+    }
+    if (ticketsToExport.isEmpty) {
+      _showSnackBar('No tickets to export');
+      return;
+    }
+    await _exportToExcel(ticketsToExport);
+  }
+
   Widget _buildSearchAndFilterBar() {
     return Card(
       elevation: 2,
@@ -384,10 +412,12 @@ class _TicketsScreenState extends State<TicketsScreen> {
                 IconButton(
                   icon: const Icon(Icons.calendar_today, color: primaryColor),
                   onPressed: () => _showDateRangePicker(context),
+                  tooltip: 'Select Date Range',
                 ),
                 IconButton(
-                  icon: const Icon(Icons.clear_all, color: primaryColor),
+                  icon: const Icon(Icons.refresh, color: primaryColor),
                   onPressed: _clearAllFilters,
+                  tooltip: 'Refresh Filters',
                 ),
                 IconButton(
                   icon: _isExporting
@@ -436,23 +466,144 @@ class _TicketsScreenState extends State<TicketsScreen> {
     );
   }
 
-  Future<void> _exportCurrentView() async {
-    // Get the current filtered tickets
-    final allTickets = await _getFilteredTicketsStream().first;
-    List<Map<String, dynamic>> ticketsToExport;
-    if (selectAll) {
-      ticketsToExport = allTickets;
-    } else if (selectedTicketIds.isNotEmpty) {
-      ticketsToExport =
-          allTickets.where((t) => selectedTicketIds.contains(t['id'])).toList();
-    } else {
-      ticketsToExport = allTickets;
+  Stream<List<Map<String, dynamic>>> _getFilteredTicketsStream() async* {
+    // Base query construction
+    Query query = FirebaseFirestore.instance.collection(DbCollections.tickets);
+
+    // Server-side filters
+    if (widget.userId != null) {
+      query = query.where('userId', isEqualTo: widget.userId);
     }
-    if (ticketsToExport.isEmpty) {
-      _showSnackBar('No tickets to export');
+    if (selectedFilter == 'status' && selectedFilterValue != null) {
+      query = query.where('status', isEqualTo: selectedFilterValue);
+    }
+    if (selectedDateRange != null) {
+      final startDate = DateTime(selectedDateRange!.start.year,
+          selectedDateRange!.start.month, selectedDateRange!.start.day);
+      final endDate = DateTime(selectedDateRange!.end.year,
+          selectedDateRange!.end.month, selectedDateRange!.end.day, 23, 59, 59);
+
+      query = query
+          .where('createdDate',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+          .where('createdDate',
+              isLessThanOrEqualTo: Timestamp.fromDate(endDate));
+    }
+
+    // Get tickets
+    final ticketsSnapshot = await query.get();
+    if (ticketsSnapshot.docs.isEmpty) {
+      yield [];
       return;
     }
-    await _exportToExcel(ticketsToExport);
+
+    // Parallel file loading
+    final filesFutures = ticketsSnapshot.docs.map((ticketDoc) async {
+      final filesSnapshot = await FirebaseFirestore.instance
+          .collection(DbCollections.tickets)
+          .doc(ticketDoc.id)
+          .collection('files')
+          .orderBy('uploadedAt', descending: true)
+          .get();
+
+      DateTime? latestUploadDate;
+      List<String> fileIds = [];
+      int fileCount = 0;
+
+      if (filesSnapshot.docs.isNotEmpty) {
+        fileIds = filesSnapshot.docs.map((fileDoc) => fileDoc.id).toList();
+        fileCount = filesSnapshot.docs.length;
+
+        final latestFile = filesSnapshot.docs.first;
+        latestUploadDate =
+            (latestFile.data()['uploadedAt'] as Timestamp?)?.toDate();
+      } else {
+        try {
+          final files = await DataService.getTicketFiles(ticketDoc.id);
+          fileIds = files
+              .map((file) => file['fileId'] ?? '')
+              .where((id) => id.isNotEmpty)
+              .toList();
+          fileCount = files.length;
+
+          if (files.isNotEmpty) {
+            latestUploadDate = null;
+          }
+        } catch (e) {
+          debugPrint(
+              'Error fetching files from storage for ticket ${ticketDoc.id}: $e');
+          fileIds = [];
+          fileCount = 0;
+        }
+      }
+
+      return {
+        'ticketId': ticketDoc.id,
+        'fileCount': fileCount,
+        'fileIds': fileIds,
+        'latestUploadDate': latestUploadDate,
+      };
+    });
+
+    final filesResults = await Future.wait(filesFutures);
+    final filesMap = {
+      for (var result in filesResults)
+        result['ticketId'] as String: {
+          'fileIds': result['fileIds'] as List<String>,
+          'fileCount': result['fileCount'] as int,
+          'latestUploadDate': result['latestUploadDate'] as DateTime?,
+        }
+    };
+
+    // Convert tickets with type safety
+    final tickets = ticketsSnapshot.docs.map<Map<String, dynamic>>((doc) {
+      final data = doc.data();
+      return {
+        if (data is Map<String, dynamic>) ...data,
+        'id': doc.id,
+        'fileIds': filesMap[doc.id]?['fileIds'] ?? <String>[],
+        'fileCount': filesMap[doc.id]?['fileCount'] ?? 0,
+        'latestUploadDate': filesMap[doc.id]?['latestUploadDate'],
+      };
+    }).toList();
+
+    // Apply client-side search filter
+    if (searchQuery.isNotEmpty) {
+      final searchLower = searchQuery.toLowerCase();
+      tickets.retainWhere((ticket) {
+        final String title = (ticket['title']?.toString() ?? '').toLowerCase();
+        final String description =
+            (ticket['description']?.toString() ?? '').toLowerCase();
+        final String publisherId = ticket['userId']?.toString() ?? '';
+        final String ticketRefId =
+            (ticket['ref_id']?.toString() ?? '').toLowerCase();
+        final String ticketReference =
+            (ticket['reference']?.toString() ?? '').toLowerCase();
+
+        final String publisherName =
+            (users[publisherId]?.toString() ?? '').toLowerCase();
+        final List<String> fileIds =
+            (ticket['fileIds'] as List<dynamic>).cast<String>();
+        final List<String> companies = (userCompanies[publisherId] ?? [])
+            .map((e) => e.toString().toLowerCase())
+            .toList();
+
+        return title.contains(searchLower) ||
+            description.contains(searchLower) ||
+            publisherName.contains(searchLower) ||
+            ticketReference.contains(searchLower) ||
+            ticketRefId.contains(searchLower) ||
+            fileIds
+                .any((fileId) => fileId.toLowerCase().contains(searchLower)) ||
+            companies.any((company) => company.contains(searchLower));
+      });
+    }
+
+    // Store all tickets for pagination
+    _allTickets = tickets;
+    _totalTickets = tickets.length;
+
+    yield tickets;
   }
 
   Widget _buildStatusDropdown() {
@@ -538,151 +689,23 @@ class _TicketsScreenState extends State<TicketsScreen> {
       selectedDateRange = null;
       selectedTicketIds.clear();
       selectAll = false;
+      _currentPage = 1;
     });
   }
 
-  Stream<List<Map<String, dynamic>>> _getFilteredTicketsStream() async* {
-    // Base query construction
-    Query query = FirebaseFirestore.instance.collection(DbCollections.tickets);
+  List<Map<String, dynamic>> _getPaginatedTickets(
+      List<Map<String, dynamic>> allTickets) {
+    final startIndex = (_currentPage - 1) * _itemsPerPage;
+    final endIndex = startIndex + _itemsPerPage;
 
-    // Server-side filters
-    if (widget.userId != null) {
-      query = query.where('userId', isEqualTo: widget.userId);
-    }
-    if (selectedFilter == 'status' && selectedFilterValue != null) {
-      query = query.where('status', isEqualTo: selectedFilterValue);
-    }
-    if (selectedDateRange != null) {
-      // Convert dates to UTC and adjust for proper range filtering
-      final startDate = DateTime(selectedDateRange!.start.year,
-          selectedDateRange!.start.month, selectedDateRange!.start.day);
-      final endDate = DateTime(selectedDateRange!.end.year,
-          selectedDateRange!.end.month, selectedDateRange!.end.day, 23, 59, 59);
-
-      query = query
-          .where('createdDate',
-              isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
-          .where('createdDate',
-              isLessThanOrEqualTo: Timestamp.fromDate(endDate));
+    if (startIndex >= allTickets.length) {
+      return [];
     }
 
-    // Get tickets
-    final ticketsSnapshot = await query.get();
-    if (ticketsSnapshot.docs.isEmpty) {
-      yield [];
-      return;
-    }
-
-    // Parallel file loading - check both Firestore and Storage
-    final filesFutures = ticketsSnapshot.docs.map((ticketDoc) async {
-      // First, try to get files from Firestore subcollection
-      final filesSnapshot = await FirebaseFirestore.instance
-          .collection(DbCollections.tickets)
-          .doc(ticketDoc.id)
-          .collection('files')
-          .orderBy('uploadedAt', descending: true)
-          .get();
-
-      DateTime? latestUploadDate;
-      List<String> fileIds = [];
-      int fileCount = 0;
-
-      if (filesSnapshot.docs.isNotEmpty) {
-        // Files exist in Firestore
-        fileIds = filesSnapshot.docs.map((fileDoc) => fileDoc.id).toList();
-        fileCount = filesSnapshot.docs.length;
-
-        final latestFile = filesSnapshot.docs.first;
-        latestUploadDate =
-            (latestFile.data()['uploadedAt'] as Timestamp?)?.toDate();
-      } else {
-        // Try to get files from Firebase Storage
-        try {
-          final files = await DataService.getTicketFiles(ticketDoc.id);
-          fileIds = files
-              .map((file) => file['fileId'] ?? '')
-              .where((id) => id.isNotEmpty)
-              .toList();
-          fileCount = files.length;
-
-          // Get latest upload date from Storage metadata if available
-          if (files.isNotEmpty) {
-            // Since Storage doesn't have uploadedAt by default, we'll skip this
-            // or you can add metadata when uploading files
-            latestUploadDate = null;
-          }
-        } catch (e) {
-          debugPrint(
-              'Error fetching files from storage for ticket ${ticketDoc.id}: $e');
-          fileIds = [];
-          fileCount = 0;
-        }
-      }
-
-      return {
-        'ticketId': ticketDoc.id,
-        'fileCount': fileCount,
-        'fileIds': fileIds,
-        'latestUploadDate': latestUploadDate,
-      };
-    });
-
-    final filesResults = await Future.wait(filesFutures);
-    final filesMap = {
-      for (var result in filesResults)
-        result['ticketId'] as String: {
-          'fileIds': result['fileIds'] as List<String>,
-          'fileCount': result['fileCount'] as int,
-          'latestUploadDate': result['latestUploadDate'] as DateTime?,
-        }
-    };
-
-    // Convert tickets with type safety
-    final tickets = ticketsSnapshot.docs.map<Map<String, dynamic>>((doc) {
-      final data = doc.data();
-      return {
-        if (data is Map<String, dynamic>) ...data,
-        'id': doc.id,
-        'fileIds': filesMap[doc.id]?['fileIds'] ?? <String>[],
-        'fileCount': filesMap[doc.id]?['fileCount'] ?? 0,
-        'latestUploadDate': filesMap[doc.id]?['latestUploadDate'],
-      };
-    }).toList();
-
-    if (searchQuery.isNotEmpty) {
-      final searchLower = searchQuery.toLowerCase();
-      tickets.retainWhere((ticket) {
-        // Convert all potential search fields
-        final String title = (ticket['title']?.toString() ?? '').toLowerCase();
-        final String description =
-            (ticket['description']?.toString() ?? '').toLowerCase();
-        final String publisherId = ticket['userId']?.toString() ?? '';
-        final String ticketRefId =
-            (ticket['ref_id']?.toString() ?? '').toLowerCase();
-        final String ticketReference =
-            (ticket['reference']?.toString() ?? '').toLowerCase();
-
-        // Get related data
-        final String publisherName =
-            (users[publisherId]?.toString() ?? '').toLowerCase();
-        final List<String> fileIds =
-            (ticket['fileIds'] as List<dynamic>).cast<String>();
-        final List<String> companies = (userCompanies[publisherId] ?? [])
-            .map((e) => e.toString().toLowerCase())
-            .toList();
-
-        // Check all search conditions
-        return title.contains(searchLower) ||
-            description.contains(searchLower) ||
-            publisherName.contains(searchLower) ||
-            ticketReference.contains(searchLower) ||
-            ticketRefId.contains(searchLower) ||
-            fileIds
-                .any((fileId) => fileId.toLowerCase().contains(searchLower)) ||
-            companies.any((company) => company.contains(searchLower));
-      });
-    }
-    yield tickets;
+    return allTickets.sublist(
+      startIndex,
+      endIndex > allTickets.length ? allTickets.length : endIndex,
+    );
   }
 
   Widget _buildTicketList() {
@@ -695,177 +718,318 @@ class _TicketsScreenState extends State<TicketsScreen> {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const Center(child: Text('No tickets available'));
         }
-        return ListView.builder(
-          itemCount: snapshot.data!.length,
-          itemBuilder: (context, index) {
-            final ticket = snapshot.data![index];
-            String assignedAdminId = ticket['assignedAdminId'] ?? '';
-            String publisherName = users[ticket['userId']] ?? 'Unknown';
-            // Get the first company name for this user (or empty string if none)
-            String companyName =
-                userCompanies[ticket['userId']]?.isNotEmpty == true
-                    ? userCompanies[ticket['userId']]!.first
-                    : '';
 
-            return Card(
-              elevation: 2,
-              color: cardColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              margin: const EdgeInsets.only(bottom: 16),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(15),
-                onTap: () {
-                  setState(() {
-                    selectedTicketId = ticket['id'];
-                    selectedTicketData = ticket;
-                    referenceController.text = ticket['reference'] ?? '';
-                  });
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Checkbox(
-                        value: selectAll ||
-                            selectedTicketIds.contains(ticket['id']),
-                        onChanged: (bool? value) {
-                          setState(() {
-                            if (selectAll) {
-                              selectAll = false;
-                              if (value == true) {
-                                selectedTicketIds.add(ticket['id']);
-                              }
-                            } else {
-                              if (value == true) {
-                                selectedTicketIds.add(ticket['id']);
-                              } else {
-                                selectedTicketIds.remove(ticket['id']);
-                              }
-                            }
-                          });
-                        },
-                      ),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+        final allTickets = snapshot.data!;
+        final paginatedTickets = _getPaginatedTickets(allTickets);
+        final totalPages = (_totalTickets / _itemsPerPage).ceil();
+
+        // Scroll to ticket if needed
+        if (_scrollToTicketId != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _scrollToTicket(_scrollToTicketId!);
+          });
+        }
+
+        return Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                key: PageStorageKey<String>('ticket_list'),
+                itemCount: paginatedTickets.length,
+                itemBuilder: (context, index) {
+                  final ticket = paginatedTickets[index];
+                  String assignedAdminId = ticket['assignedAdminId'] ?? '';
+                  String publisherName = users[ticket['userId']] ?? 'Unknown';
+                  String companyName =
+                      userCompanies[ticket['userId']]?.isNotEmpty == true
+                          ? userCompanies[ticket['userId']]!.first
+                          : '';
+
+                  return Card(
+                    key: ValueKey(ticket['id']),
+                    elevation: 2,
+                    color: cardColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(15),
+                      onTap: () {
+                        setState(() {
+                          selectedTicketId = ticket['id'];
+                          selectedTicketData = ticket;
+                          referenceController.text = ticket['reference'] ?? '';
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              ticket['title'] ?? 'No Title',
-                              style: boldTextStyle.copyWith(fontSize: 18),
+                            Checkbox(
+                              value: selectAll ||
+                                  selectedTicketIds.contains(ticket['id']),
+                              onChanged: (bool? value) {
+                                setState(() {
+                                  if (selectAll) {
+                                    selectAll = false;
+                                    if (value == true) {
+                                      selectedTicketIds.add(ticket['id']);
+                                    }
+                                  } else {
+                                    if (value == true) {
+                                      selectedTicketIds.add(ticket['id']);
+                                    } else {
+                                      selectedTicketIds.remove(ticket['id']);
+                                    }
+                                  }
+                                });
+                              },
                             ),
-                            if (ticket['reference']?.isNotEmpty == true)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Text(
-                                  'Reference: ${ticket['reference']}',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            Text(
-                              'Published by: $publisherName',
-                              style: TextStyle(color: Colors.grey[600]),
-                            ),
-                            if (companyName.isNotEmpty)
-                              Text(
-                                'Company: $companyName',
-                                style: TextStyle(color: Colors.grey[600]),
-                              ),
-                            // Display payment method from ticket
-                            if (ticket['paymentMethod'] != null &&
-                                ticket['paymentMethod'].toString().isNotEmpty)
-                              Text(
-                                'Payment Method: ${ticket['paymentMethod']}',
-                                style: TextStyle(
-                                  color: Colors.grey[700],
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            Text(
-                              'Status: ${ticket['status'] ?? 'No Status'}',
-                              style: TextStyle(
-                                color: TicketStatus.fromString(
-                                  ticket['status'],
-                                ).getColor(),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            if (ticket['ref_id']?.isNotEmpty == true)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Text(
-                                  'Reference Id: ${ticket['ref_id']}',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            if (ticket['createdDate'] != null)
-                              Text(
-                                'Created: ${DateFormat('MMM dd, yyyy - HH:mm').format((ticket['createdDate'] as Timestamp).toDate())}',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 12,
-                                ),
-                              ),
-                            if (ticket['latestUploadDate'] != null)
-                              Text(
-                                'Latest Upload: ${DateFormat('MMM dd, yyyy - HH:mm').format(ticket['latestUploadDate'] as DateTime)}',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 12,
-                                ),
-                              ),
-                            if (ticket['lastUpdate'] != null)
-                              Text(
-                                'Last Update: ${DateFormat('MMM dd, yyyy - HH:mm').format((ticket['lastUpdate'] as Timestamp).toDate())}',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 12,
-                                ),
-                              ),
-                            const SizedBox(height: 4),
-                            if (ticket['fileIds'] != null &&
-                                (ticket['fileIds'] as List).isNotEmpty)
-                              Row(
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(
-                                    Icons.attach_file,
-                                    size: 16,
-                                    color: Colors.grey[600],
-                                  ),
-                                  const SizedBox(width: 4),
                                   Text(
-                                    '${(ticket['fileIds'] as List).length} attachment${(ticket['fileIds'] as List).length == 1 ? '' : 's'}',
+                                    ticket['title'] ?? 'No Title',
+                                    style: boldTextStyle.copyWith(fontSize: 18),
+                                  ),
+                                  if (ticket['reference']?.isNotEmpty == true)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        'Reference: ${ticket['reference']}',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  Text(
+                                    'Published by: $publisherName',
+                                    style: TextStyle(color: Colors.grey[600]),
+                                  ),
+                                  if (companyName.isNotEmpty)
+                                    Text(
+                                      'Company: $companyName',
+                                      style: TextStyle(color: Colors.grey[600]),
+                                    ),
+                                  if (ticket['paymentMethod'] != null &&
+                                      ticket['paymentMethod']
+                                          .toString()
+                                          .isNotEmpty)
+                                    Text(
+                                      'Payment Method: ${ticket['paymentMethod']}',
+                                      style: TextStyle(
+                                        color: Colors.grey[700],
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  Text(
+                                    'Status: ${ticket['status'] ?? 'No Status'}',
                                     style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
+                                      color: TicketStatus.fromString(
+                                        ticket['status'],
+                                      ).getColor(),
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
+                                  const SizedBox(height: 4),
+                                  if (ticket['ref_id']?.isNotEmpty == true)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        'Reference Id: ${ticket['ref_id']}',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  if (ticket['createdDate'] != null)
+                                    Text(
+                                      'Created: ${DateFormat('MMM dd, yyyy - HH:mm').format((ticket['createdDate'] as Timestamp).toDate())}',
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  if (ticket['latestUploadDate'] != null)
+                                    Text(
+                                      'Latest Upload: ${DateFormat('MMM dd, yyyy - HH:mm').format(ticket['latestUploadDate'] as DateTime)}',
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  if (ticket['lastUpdate'] != null)
+                                    Text(
+                                      'Last Update: ${DateFormat('MMM dd, yyyy - HH:mm').format((ticket['lastUpdate'] as Timestamp).toDate())}',
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  const SizedBox(height: 4),
+                                  if (ticket['fileIds'] != null &&
+                                      (ticket['fileIds'] as List).isNotEmpty)
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.attach_file,
+                                          size: 16,
+                                          color: Colors.grey[600],
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${(ticket['fileIds'] as List).length} attachment${(ticket['fileIds'] as List).length == 1 ? '' : 's'}',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                 ],
                               ),
+                            ),
+                            _buildAdminDropdown(ticket['id'], assignedAdminId),
                           ],
                         ),
                       ),
-                      _buildAdminDropdown(ticket['id'], assignedAdminId),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               ),
-            );
-          },
+            ),
+            _buildPaginationControls(totalPages),
+          ],
         );
       },
     );
+  }
+
+  Widget _buildPaginationControls(int totalPages) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Page size dropdown
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: DropdownButton<int>(
+              value: _itemsPerPage,
+              underline: const SizedBox(),
+              items: _pageSizeOptions.map((size) {
+                return DropdownMenuItem<int>(
+                  value: size,
+                  child: Text('$size per page'),
+                );
+              }).toList(),
+              onChanged: (newSize) {
+                setState(() {
+                  _itemsPerPage = newSize!;
+                  _currentPage = 1; // Reset to first page
+                });
+              },
+            ),
+          ),
+          const SizedBox(width: 16),
+          // First page button
+          IconButton(
+            icon: const Icon(Icons.first_page),
+            onPressed: _currentPage > 1
+                ? () {
+                    setState(() {
+                      _currentPage = 1;
+                    });
+                  }
+                : null,
+            color: primaryColor,
+          ),
+          // Previous page button
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            onPressed: _currentPage > 1
+                ? () {
+                    setState(() {
+                      _currentPage--;
+                    });
+                  }
+                : null,
+            color: primaryColor,
+          ),
+          // Page indicator
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: primaryColor,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              'Page $_currentPage of $totalPages',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          // Next page button
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            onPressed: _currentPage < totalPages
+                ? () {
+                    setState(() {
+                      _currentPage++;
+                    });
+                  }
+                : null,
+            color: primaryColor,
+          ),
+          // Last page button
+          IconButton(
+            icon: const Icon(Icons.last_page),
+            onPressed: _currentPage < totalPages
+                ? () {
+                    setState(() {
+                      _currentPage = totalPages;
+                    });
+                  }
+                : null,
+            color: primaryColor,
+          ),
+          const SizedBox(width: 16),
+          // Total count
+          Text(
+            'Total: $_totalTickets',
+            style: TextStyle(
+              color: Colors.grey[700],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _scrollToTicket(String ticketId) {
+    // Find the page containing this ticket
+    final ticketIndex = _allTickets.indexWhere((t) => t['id'] == ticketId);
+    if (ticketIndex != -1) {
+      final targetPage = (ticketIndex / _itemsPerPage).floor() + 1;
+      setState(() {
+        _currentPage = targetPage;
+        _scrollToTicketId = null; // Clear the flag
+      });
+    }
   }
 
   Widget _buildAdminDropdown(String ticketId, String assignedAdminId) {
@@ -892,24 +1056,71 @@ class _TicketsScreenState extends State<TicketsScreen> {
     final isValidAssignedAdmin =
         uniqueAdmins.any((admin) => admin['id'] == assignedAdminId);
 
-    return DropdownButton<String>(
-      value: isValidAssignedAdmin ? assignedAdminId : null,
-      hint: const Text('Assign Admin'),
-      onChanged: (String? newValue) {
-        _assignAdminToTicket(ticketId, newValue);
-      },
-      items: [
-        const DropdownMenuItem<String>(
-          value: null,
-          child: Text('Unassigned'),
+    // Determine color based on assignment status
+    final bool isAssigned = assignedAdminId.isNotEmpty && isValidAssignedAdmin;
+    final Color dropdownColor = isAssigned ? primaryColor : Colors.grey;
+    final Color textColor = isAssigned ? Colors.white : Colors.black87;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: dropdownColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: ButtonTheme(
+          alignedDropdown: true,
+          child: DropdownButton<String>(
+            value: isValidAssignedAdmin ? assignedAdminId : null,
+            hint: Text(
+              'Assign Admin',
+              style: TextStyle(color: textColor, fontSize: 14),
+            ),
+            icon: Icon(Icons.arrow_drop_down, color: textColor),
+            dropdownColor: Colors.white,
+            isDense: true,
+            selectedItemBuilder: (BuildContext context) {
+              return [
+                Center(
+                  child: Text(
+                    'Unassigned',
+                    style: TextStyle(color: textColor, fontSize: 14),
+                  ),
+                ),
+                ...uniqueAdmins.map((admin) {
+                  return Center(
+                    child: Text(
+                      admin['name'] as String,
+                      style: TextStyle(color: textColor, fontSize: 14),
+                    ),
+                  );
+                }).toList(),
+              ];
+            },
+            onChanged: (String? newValue) {
+              _assignAdminToTicket(ticketId, newValue);
+            },
+            items: [
+              DropdownMenuItem<String>(
+                value: null,
+                child: const Text(
+                  'Unassigned',
+                  style: TextStyle(color: Colors.black87),
+                ),
+              ),
+              ...uniqueAdmins.map((admin) {
+                return DropdownMenuItem<String>(
+                  value: admin['id'] as String,
+                  child: Text(
+                    admin['name'] as String,
+                    style: const TextStyle(color: Colors.black87),
+                  ),
+                );
+              }).toList(),
+            ],
+          ),
         ),
-        ...uniqueAdmins.map((admin) {
-          return DropdownMenuItem<String>(
-            value: admin['id'] as String,
-            child: Text(admin['name'] as String),
-          );
-        }).toList(),
-      ],
+      ),
     );
   }
 

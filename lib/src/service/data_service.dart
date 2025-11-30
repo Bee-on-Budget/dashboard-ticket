@@ -128,7 +128,6 @@ class DataService {
       }
 
       // Only try Storage if Firestore has no files
-      print('No files in Firestore for ticket $ticketId, checking Storage...');
 
       try {
         // Check if Storage is available
@@ -142,12 +141,8 @@ class DataService {
         );
 
         if (listResult.items.isEmpty) {
-          print('No files found in Storage for ticket $ticketId');
           return [];
         }
-
-        print(
-            'Found ${listResult.items.length} files in Storage for ticket $ticketId');
 
         final filesFutures = listResult.items.map((item) async {
           try {

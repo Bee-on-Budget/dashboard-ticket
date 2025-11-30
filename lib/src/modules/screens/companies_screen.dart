@@ -77,10 +77,12 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
         final context = key.currentContext;
         if (context != null) {
           final ScrollableState? scrollable = Scrollable.of(context);
-          final double? itemCenterOffset = _getItemOffset(context, alignment: 0.5);
+          final double? itemCenterOffset =
+              _getItemOffset(context, alignment: 0.5);
           if (scrollable != null && itemCenterOffset != null) {
             final double currentOffset = _scrollController.position.pixels;
-            final double viewportExtent = _scrollController.position.viewportDimension;
+            final double viewportExtent =
+                _scrollController.position.viewportDimension;
             final double itemTopOffset = itemCenterOffset - viewportExtent / 2;
 
             if ((itemTopOffset - currentOffset).abs() > 1.0) {
@@ -102,6 +104,7 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
   Future<void> _saveCompanyWithUsers({
     required Company originalCompany,
     required String name,
+    String? description,
     required List<String> paymentMethods,
     required bool isActive,
     required List<String> assignedUserIds,
@@ -146,6 +149,7 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
     final updatedCompany = Company(
       id: originalCompany.id,
       name: name,
+      description: description,
       paymentMethods: paymentMethods,
       createdAt: originalCompany.createdAt ?? DateTime.now(),
       isActive: isActive,
@@ -223,6 +227,8 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
 
   Future<void> _editCompanyInfo(Company company) async {
     final nameController = TextEditingController(text: company.name);
+    final descriptionController =
+        TextEditingController(text: company.description ?? '');
     final paymentMethodController = TextEditingController();
     List<String> selectedPaymentMethods = List.from(company.paymentMethods);
     bool isActive = company.isActive;
@@ -296,6 +302,36 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                         decoration: InputDecoration(
                           labelText: 'Company Name',
                           prefixIcon: Icon(Icons.business_outlined,
+                              color: Colors.grey[600]),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey[400]!),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey[400]!),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: theme.primaryColor,
+                              width: 2,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor:
+                              isDarkMode ? Colors.grey[800] : Colors.grey[100],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Description
+                      TextField(
+                        controller: descriptionController,
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          labelText: 'Description',
+                          prefixIcon: Icon(Icons.description_outlined,
                               color: Colors.grey[600]),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -489,6 +525,10 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                             onPressed: () => _saveCompanyWithUsers(
                               originalCompany: company,
                               name: nameController.text,
+                              description:
+                                  descriptionController.text.trim().isEmpty
+                                      ? null
+                                      : descriptionController.text.trim(),
                               paymentMethods: selectedPaymentMethods,
                               isActive: isActive,
                               assignedUserIds: assignedUserIds,
@@ -520,6 +560,7 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
 
   Future<void> _createNewCompany() async {
     final nameController = TextEditingController();
+    final descriptionController = TextEditingController();
     final paymentMethodController = TextEditingController();
     List<String> selectedPaymentMethods = [];
     List<String> assignedUserIds = [];
@@ -570,6 +611,34 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                         decoration: InputDecoration(
                           labelText: 'Company Name',
                           prefixIcon: Icon(Icons.business_outlined,
+                              color: Colors.grey[600]),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey[400]!),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey[400]!),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: theme.primaryColor,
+                              width: 2,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor:
+                              isDarkMode ? Colors.grey[800] : Colors.grey[100],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      TextField(
+                        controller: descriptionController,
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          labelText: 'Description',
+                          prefixIcon: Icon(Icons.description_outlined,
                               color: Colors.grey[600]),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -716,6 +785,10 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                                     .millisecondsSinceEpoch
                                     .toString(),
                                 name: nameController.text,
+                                description:
+                                    descriptionController.text.trim().isEmpty
+                                        ? null
+                                        : descriptionController.text.trim(),
                                 paymentMethods: selectedPaymentMethods,
                                 createdAt: DateTime.now(),
                                 isActive: true,
