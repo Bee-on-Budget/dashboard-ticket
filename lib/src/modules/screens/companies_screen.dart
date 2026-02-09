@@ -27,6 +27,15 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
   double? _lastScrollPosition;
   Timer? _debounce;
 
+  void _onSearchChange() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      setState(() {
+        _searchText = _searchController.text.toLowerCase();
+      });
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -74,12 +83,10 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_itemKeys.containsKey(companyId)) {
         final key = _itemKeys[companyId]!;
-        final context = key.currentContext;
-        if (context != null) {
-          final ScrollableState? scrollable = Scrollable.of(context);
-          final double? itemCenterOffset =
-              _getItemOffset(context, alignment: 0.5);
-          if (scrollable != null && itemCenterOffset != null) {
+        final ctx = key.currentContext;
+        if (ctx != null) {
+          final double? itemCenterOffset = _getItemOffset(ctx, alignment: 0.5);
+          if (itemCenterOffset != null) {
             final double currentOffset = _scrollController.position.pixels;
             final double viewportExtent =
                 _scrollController.position.viewportDimension;
@@ -106,6 +113,7 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
     required String name,
     String? description,
     required List<String> paymentMethods,
+    required Map<String, List<String>>? customFields,
     required bool isActive,
     required List<String> assignedUserIds,
     required List<User> allUsers,
@@ -151,6 +159,7 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
       name: name,
       description: description,
       paymentMethods: paymentMethods,
+      customFields: customFields,
       createdAt: originalCompany.createdAt ?? DateTime.now(),
       isActive: isActive,
     );
@@ -230,7 +239,11 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
     final descriptionController =
         TextEditingController(text: company.description ?? '');
     final paymentMethodController = TextEditingController();
+    final customFieldKeyController = TextEditingController();
+    final customFieldValueController = TextEditingController();
     List<String> selectedPaymentMethods = List.from(company.paymentMethods);
+    Map<String, List<String>> selectedCustomFields =
+        Map.from(company.customFields ?? {});
     bool isActive = company.isActive;
 
     // Load users assigned to this company
@@ -424,6 +437,136 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                         ),
                       const SizedBox(height: 20),
 
+                      // Custom Fields Section
+                      Text(
+                        'Custom Fields',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: theme.primaryColor,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: customFieldKeyController,
+                              decoration: InputDecoration(
+                                labelText: 'Field Name',
+                                prefixIcon:
+                                    Icon(Icons.label, color: Colors.grey[600]),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                filled: true,
+                                fillColor: isDarkMode
+                                    ? Colors.grey[800]
+                                    : Colors.grey[100],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: customFieldValueController,
+                              decoration: InputDecoration(
+                                labelText: 'Value',
+                                prefixIcon: Icon(Icons.text_fields,
+                                    color: Colors.grey[600]),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                filled: true,
+                                fillColor: isDarkMode
+                                    ? Colors.grey[800]
+                                    : Colors.grey[100],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.add_circle),
+                            color: theme.primaryColor,
+                            iconSize: 36,
+                            onPressed: () {
+                              final key = customFieldKeyController.text.trim();
+                              final value =
+                                  customFieldValueController.text.trim();
+                              if (key.isNotEmpty && value.isNotEmpty) {
+                                setDialogState(() {
+                                  if (selectedCustomFields.containsKey(key)) {
+                                    selectedCustomFields[key]!.add(value);
+                                  } else {
+                                    selectedCustomFields[key] = [value];
+                                  }
+                                  customFieldKeyController.clear();
+                                  customFieldValueController.clear();
+                                });
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (selectedCustomFields.isNotEmpty)
+                        ...selectedCustomFields.entries.map((entry) {
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: theme.primaryColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                  color: theme.primaryColor.withOpacity(0.3)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      entry.key,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    const Spacer(),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete, size: 18),
+                                      onPressed: () {
+                                        setDialogState(() {
+                                          selectedCustomFields
+                                              .remove(entry.key);
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                Wrap(
+                                  spacing: 8,
+                                  children: entry.value.map((val) {
+                                    return Chip(
+                                      label: Text(val),
+                                      deleteIcon:
+                                          const Icon(Icons.close, size: 16),
+                                      onDeleted: () {
+                                        setDialogState(() {
+                                          entry.value.remove(val);
+                                          if (entry.value.isEmpty) {
+                                            selectedCustomFields
+                                                .remove(entry.key);
+                                          }
+                                        });
+                                      },
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      const SizedBox(height: 20),
+
                       // Assigned Users Section with Search
                       Text(
                         'Assigned Users',
@@ -507,9 +650,82 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 24),
+
+                      // Custom Fields
+                      if (company.customFields != null &&
+                          company.customFields!.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          'Custom Fields',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                        ),
+                        const SizedBox(height: 12),
+                        ...company.customFields!.entries.map((entry) {
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .primary
+                                  .withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withOpacity(0.3),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  entry.key,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Wrap(
+                                  spacing: 8,
+                                  children: entry.value.map((val) {
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary
+                                            .withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        val,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
 
                       // Action Buttons
+                      const SizedBox(height: 20),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
@@ -530,6 +746,9 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                                       ? null
                                       : descriptionController.text.trim(),
                               paymentMethods: selectedPaymentMethods,
+                              customFields: selectedCustomFields.isNotEmpty
+                                  ? selectedCustomFields
+                                  : null,
                               isActive: isActive,
                               assignedUserIds: assignedUserIds,
                               allUsers: allUsers,
@@ -854,6 +1073,79 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
         );
       },
     );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          Expanded(
+            child: Text(value),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteCompany(Company company) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Company'),
+        content: Text(
+          'Are you sure you want to delete "${company.name}"? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await DataService.deleteCompany(company.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Company "${company.name}" deleted successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting company: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  List<Company> _filterCompanies(List<Company> companies) {
+    if (_searchText.isEmpty) {
+      return companies;
+    }
+    return companies.where((company) {
+      return company.name.toLowerCase().contains(_searchText) ||
+          company.paymentMethods
+              .any((pm) => pm.toLowerCase().contains(_searchText));
+    }).toList();
   }
 
   @override
@@ -1339,87 +1631,5 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
         ),
       ),
     );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$label: ',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          Expanded(
-            child: Text(value),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _onSearchChange() {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () {
-      setState(() {
-        _searchText = _searchController.text.toLowerCase();
-      });
-    });
-  }
-
-  Future<void> _deleteCompany(Company company) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Company'),
-        content: Text(
-          'Are you sure you want to delete "${company.name}"? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    try {
-      await DataService.deleteCompany(company.id);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Company "${company.name}" deleted successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error deleting company: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  List<Company> _filterCompanies(List<Company> companies) {
-    if (_searchText.isEmpty) {
-      return companies;
-    }
-    return companies.where((company) {
-      return company.name.toLowerCase().contains(_searchText) ||
-          company.paymentMethods
-              .any((pm) => pm.toLowerCase().contains(_searchText));
-    }).toList();
   }
 }

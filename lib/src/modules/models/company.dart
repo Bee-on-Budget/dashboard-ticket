@@ -9,6 +9,7 @@ class Company {
   final String? website;
   final String? address;
   final List<String> paymentMethods; // Change from List<PaymentMethods>
+  final Map<String, List<String>>? customFields;
   final DateTime? createdAt;
   final bool isActive;
 
@@ -21,6 +22,7 @@ class Company {
     this.website,
     this.address,
     required this.paymentMethods,
+    this.customFields,
     this.createdAt,
     this.isActive = true,
   });
@@ -37,6 +39,10 @@ class Company {
       paymentMethods: json['paymentMethods'] != null
           ? List<String>.from(json['paymentMethods'])
           : [],
+      customFields: json['customFields'] != null
+          ? (json['customFields'] as Map<String, dynamic>)
+              .map((key, value) => MapEntry(key, List<String>.from(value)))
+          : null,
       createdAt: (json['createdAt'] as Timestamp?)?.toDate(),
       isActive: json['isActive'] ?? true,
     );
@@ -50,6 +56,10 @@ class Company {
       if (phone != null) 'phone': phone,
       if (website != null) 'website': website,
       if (address != null) 'address': address,
+      'paymentMethods': paymentMethods,
+      if (customFields != null) 'customFields': customFields,
+      'createdAt': createdAt,
+      'isActive': isActive,
       'paymentMethods': paymentMethods,
       'createdAt': createdAt,
       'isActive': isActive,

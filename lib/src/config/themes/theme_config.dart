@@ -24,7 +24,7 @@ final ThemeData themeConfig = ThemeData(
   ),
 
   // Card Theme
-  cardTheme: CardTheme(
+  cardTheme: CardThemeData(
     elevation: 4,
     shadowColor: Colors.black26,
     shape: RoundedRectangleBorder(
@@ -158,7 +158,7 @@ final ThemeData themeConfig = ThemeData(
   ),
 
   // Dialog Theme
-  dialogTheme: DialogTheme(
+  dialogTheme: DialogThemeData(
     backgroundColor: Colors.white,
     elevation: 8,
     shadowColor: Colors.black26,
@@ -377,7 +377,7 @@ final ThemeData themeConfig = ThemeData(
   ),
 
   // Tab Bar Theme
-  tabBarTheme: TabBarTheme(
+  tabBarTheme: TabBarThemeData(
     labelColor: const Color(0xFF3D4B3F),
     unselectedLabelColor: Colors.grey[600],
     indicatorColor: const Color(0xFF3D4B3F),

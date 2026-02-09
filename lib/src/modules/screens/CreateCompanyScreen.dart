@@ -19,8 +19,13 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _paymentMethodController =
       TextEditingController();
+  final TextEditingController _customFieldKeyController =
+      TextEditingController();
+  final TextEditingController _customFieldValueController =
+      TextEditingController();
 
   final List<String> _paymentMethods = [];
+  final Map<String, List<String>> _customFields = {};
   List<String> _selectedUserIds = [];
 
   @override
@@ -30,6 +35,8 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
     _emailController.dispose();
     _phoneController.dispose();
     _paymentMethodController.dispose();
+    _customFieldKeyController.dispose();
+    _customFieldValueController.dispose();
     super.dispose();
   }
 
@@ -59,6 +66,7 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
         name: name,
         description: description.isEmpty ? null : description,
         paymentMethods: _paymentMethods,
+        customFields: _customFields.isNotEmpty ? _customFields : null,
         createdAt: DateTime.now(),
         isActive: true,
       );
@@ -107,6 +115,27 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
       });
     } else if (_paymentMethods.contains(method)) {
       _showSnackBar('Payment method already added');
+    }
+  }
+
+  void _addCustomField() {
+    final key = _customFieldKeyController.text.trim();
+    final value = _customFieldValueController.text.trim();
+    if (key.isNotEmpty && value.isNotEmpty) {
+      setState(() {
+        if (!_customFields.containsKey(key)) {
+          _customFields[key] = [];
+        }
+        if (!_customFields[key]!.contains(value)) {
+          _customFields[key]!.add(value);
+        } else {
+          _showSnackBar('Value already exists for this key');
+        }
+        _customFieldValueController
+            .clear(); // Clear only value, keep key for adding more
+      });
+    } else {
+      _showSnackBar('Please enter both key and value');
     }
   }
 
@@ -226,6 +255,8 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
         const SizedBox(height: 24),
         _buildPaymentMethodField(),
         const SizedBox(height: 24),
+        _buildCustomField(),
+        const SizedBox(height: 24),
         _buildUserSelectionField(),
         const SizedBox(height: 32),
         _buildCreateButton(),
@@ -325,6 +356,138 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
                 labelStyle: const TextStyle(fontWeight: FontWeight.bold),
               ))
           .toList(),
+    );
+  }
+
+  Widget _buildCustomField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Custom Fields (Optional)',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF44564A),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              flex: 1,
+              child: TextField(
+                controller: _customFieldKeyController,
+                decoration: InputDecoration(
+                  labelText: 'Key',
+                  labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                  prefixIcon: const Icon(Icons.label, color: Color(0xFF44564A)),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onSubmitted: (_) => _addCustomField(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 1,
+              child: TextField(
+                controller: _customFieldValueController,
+                decoration: InputDecoration(
+                  labelText: 'Value',
+                  labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                  prefixIcon: const Icon(Icons.edit, color: Color(0xFF44564A)),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onSubmitted: (_) => _addCustomField(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: _addCustomField,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF44564A),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Add',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _buildCustomFieldChips(),
+      ],
+    );
+  }
+
+  Widget _buildCustomFieldChips() {
+    if (_customFields.isEmpty) {
+      return const Text(
+        'No custom fields added yet',
+        style: TextStyle(color: Colors.grey),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: _customFields.entries.map((entry) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  '${entry.key}:',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF44564A),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.delete, size: 16, color: Colors.red),
+                  onPressed: () =>
+                      setState(() => _customFields.remove(entry.key)),
+                ),
+              ],
+            ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: entry.value
+                  .map((value) => Chip(
+                        label: Text(value),
+                        deleteIcon: const Icon(Icons.close, size: 16),
+                        onDeleted: () => setState(() {
+                          entry.value.remove(value);
+                          if (entry.value.isEmpty) {
+                            _customFields.remove(entry.key);
+                          }
+                        }),
+                        backgroundColor: Colors.grey[200],
+                        labelStyle:
+                            const TextStyle(fontWeight: FontWeight.bold),
+                      ))
+                  .toList(),
+            ),
+            const SizedBox(height: 8),
+          ],
+        );
+      }).toList(),
     );
   }
 
