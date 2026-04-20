@@ -54,7 +54,7 @@ class User {
     return {
       'userId': userId,
       'username': username,
-      'role': role.toString(),
+      'role': role.storageValue,
       'email': email,
       'phoneNumber': phoneNumber,
       'paymentMethods': paymentMethods.map((pm) => pm.toString()).toList(),

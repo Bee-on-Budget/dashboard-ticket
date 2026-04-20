@@ -569,7 +569,7 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
 
                       // Assigned Users Section with Search
                       Text(
-                        'Assigned Users',
+                        'Assigned Users / Accountents',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -960,7 +960,7 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
 
                       // User Selection with Search
                       Text(
-                        'Assign Users',
+                        'Assign Users / Accountents',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

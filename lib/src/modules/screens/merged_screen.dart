@@ -9,6 +9,7 @@ import 'tickets_screen.dart';
 import 'profile_screen.dart';
 import 'companies_screen.dart';
 import '../../config/db_collections.dart';
+import '../../config/enums/user_role.dart';
 
 class MergedScreen extends StatefulWidget {
   const MergedScreen({super.key});
@@ -21,6 +22,8 @@ class MergedScreenState extends State<MergedScreen> {
   int _currentIndex = 0;
   String? _userName;
   bool _isUsersExpanded = false;
+  bool _isLoadingUserContext = true;
+  UserRole _currentUserRole = UserRole.unknown;
 
   @override
   void initState() {
@@ -43,17 +46,28 @@ class MergedScreenState extends State<MergedScreen> {
                 user.displayName ??
                 user.email?.split('@')[0] ??
                 'User';
+            _currentUserRole =
+                UserRole.fromString(userData?['role']?.toString());
+            _isLoadingUserContext = false;
           });
         } else {
           setState(() {
             _userName = user.displayName ?? user.email?.split('@')[0] ?? 'User';
+            _currentUserRole = UserRole.unknown;
+            _isLoadingUserContext = false;
           });
         }
       } catch (e) {
         setState(() {
           _userName = user.displayName ?? user.email?.split('@')[0] ?? 'User';
+          _currentUserRole = UserRole.unknown;
+          _isLoadingUserContext = false;
         });
       }
+    } else {
+      setState(() {
+        _isLoadingUserContext = false;
+      });
     }
   }
 
@@ -63,23 +77,36 @@ class MergedScreenState extends State<MergedScreen> {
     });
   }
 
-  final List<Widget> _pages = [
-    HomeScreen(),
-    CreateUserScreen(),
-    TicketsScreen(),
-    ProfileScreen(),
-    CompaniesScreen(),
-  ];
+  List<Widget> get _pages {
+    if (_currentUserRole == UserRole.admin) {
+      return const [
+        HomeScreen(),
+        CreateUserScreen(),
+        TicketsScreen(),
+        ProfileScreen(),
+        CompaniesScreen(),
+      ];
+    }
+
+    return const [
+      TicketsScreen(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
+    final pages = _pages;
+    final currentIndex = _currentIndex >= pages.length ? 0 : _currentIndex;
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
           children: [
             Expanded(
               child: Text(
-                'Admin Panel',
+                _currentUserRole == UserRole.admin
+                    ? 'Admin Panel'
+                    : 'Tickets',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 20,
@@ -146,7 +173,9 @@ class MergedScreenState extends State<MergedScreen> {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Welcome to the Admin Panel',
+                      _currentUserRole == UserRole.admin
+                          ? 'Welcome to the Admin Panel'
+                          : 'Ticket access',
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: 14,
@@ -166,20 +195,34 @@ class MergedScreenState extends State<MergedScreen> {
                   ],
                 ),
               ),
-              _buildDrawerItem(Icons.dashboard, 'Dashboard', 0),
-              _buildUsersCategory(),
-              _buildDrawerItem(Icons.list, 'Tickets', 2),
-              _buildDrawerItem(Icons.business, 'Companies', 4),
+              if (_isLoadingUserContext)
+                const Padding(
+                  padding: EdgeInsets.all(24.0),
+                  child: Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  ),
+                )
+              else ...[
+                if (_currentUserRole == UserRole.admin) ...[
+                  _buildDrawerItem(Icons.dashboard, 'Dashboard', 0),
+                  _buildUsersCategory(),
+                  _buildDrawerItem(Icons.list, 'Tickets', 2),
+                  _buildDrawerItem(Icons.business, 'Companies', 4),
+                ] else
+                  _buildDrawerItem(Icons.list, 'Tickets', 0),
+              ],
               const Divider(color: Colors.white54),
               _buildDrawerItem(Icons.logout, 'Logout', 5, isLogout: true),
             ],
           ),
         ),
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
+      body: _isLoadingUserContext
+          ? const Center(child: CircularProgressIndicator())
+          : IndexedStack(
+              index: currentIndex,
+              children: pages,
+            ),
     );
   }
 

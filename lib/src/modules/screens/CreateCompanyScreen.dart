@@ -52,7 +52,7 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
     }
 
     if (_selectedUserIds.isEmpty) {
-      _showSnackBar('Please select at least one user');
+      _showSnackBar('Please select at least one user or accountent');
       return;
     }
 
@@ -496,7 +496,7 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Select Users',
+          'Select Users / Accountents',
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
@@ -515,7 +515,7 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
         ),
         const SizedBox(height: 12),
         Text(
-          '${_selectedUserIds.length} user(s) selected',
+          '${_selectedUserIds.length} account(s) selected',
           style: TextStyle(
             color: Colors.grey[600],
             fontWeight: FontWeight.bold,

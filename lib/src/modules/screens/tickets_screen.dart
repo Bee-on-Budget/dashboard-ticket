@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:excel/excel.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../config/enums/ticket_status.dart';
+import '../../config/enums/user_role.dart';
 import '../models/ticket_file.dart';
 import 'comment_screen.dart';
 import '../../service/data_service.dart';
@@ -59,10 +60,14 @@ class _TicketsScreenState extends State<TicketsScreen> {
   bool _isExporting = false;
   Set<String> selectedTicketIds = {};
   bool selectAll = false;
+  bool _isLoadingCurrentUser = true;
+  UserRole _currentUserRole = UserRole.unknown;
+  List<String> _currentUserCompanies = [];
 
   @override
   void initState() {
     super.initState();
+    _loadCurrentUserContext();
     _fetchAdmins();
     _fetchUsers();
   }
@@ -99,6 +104,47 @@ class _TicketsScreenState extends State<TicketsScreen> {
     }
   }
 
+  Future<void> _loadCurrentUserContext() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      if (mounted) {
+        setState(() {
+          _currentUserRole = UserRole.unknown;
+          _currentUserCompanies = [];
+          _isLoadingCurrentUser = false;
+        });
+      }
+      return;
+    }
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection(DbCollections.users)
+          .doc(currentUser.uid)
+          .get();
+      final userData = userDoc.data() ?? <String, dynamic>{};
+
+      if (mounted) {
+        setState(() {
+          _currentUserRole =
+              UserRole.fromString(userData['role']?.toString());
+          _currentUserCompanies =
+              List<String>.from(userData['companies'] ?? const []);
+          _isLoadingCurrentUser = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _currentUserRole = UserRole.unknown;
+          _currentUserCompanies = [];
+          _isLoadingCurrentUser = false;
+        });
+      }
+      _showSnackBar('Failed to load your access permissions: $e');
+    }
+  }
+
   Future<void> _fetchUsers() async {
     try {
       final userSnapshot = await FirebaseFirestore.instance
@@ -128,6 +174,31 @@ class _TicketsScreenState extends State<TicketsScreen> {
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  bool get _isAdmin => _currentUserRole == UserRole.admin;
+
+  bool _canAccessTicket(Map<String, dynamic> ticket) {
+    if (_isAdmin || widget.userId != null) {
+      return true;
+    }
+
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    final publisherId = ticket['userId']?.toString();
+
+    if (_currentUserRole == UserRole.user) {
+      return publisherId == currentUserId;
+    }
+
+    if (_currentUserRole == UserRole.accountent) {
+      final publisherCompanies = userCompanies[publisherId] ?? const <String>[];
+      return publisherCompanies
+          .toSet()
+          .intersection(_currentUserCompanies.toSet())
+          .isNotEmpty;
+    }
+
+    return false;
   }
 
   Future<bool> _handleWillPop() async {
@@ -198,24 +269,11 @@ class _TicketsScreenState extends State<TicketsScreen> {
       // Add data rows
       for (int i = 0; i < tickets.length; i++) {
         final ticket = tickets[i];
-        final ticketId = ticket['id'];
 
-        // Fetch attachments for this ticket
-        List<String> attachmentNames = [];
-        try {
-          final filesSnapshot = await FirebaseFirestore.instance
-              .collection(DbCollections.tickets)
-              .doc(ticketId)
-              .collection('files')
-              .get();
-
-          attachmentNames = filesSnapshot.docs
-              .map(
-                  (doc) => doc.data()['fileName']?.toString() ?? 'Unknown File')
-              .toList();
-        } catch (e) {
-          attachmentNames = ['Error loading files'];
-        }
+        final attachmentNames =
+            (ticket['attachmentNames'] as List<dynamic>? ?? const [])
+                .map((name) => name.toString())
+                .toList();
 
         String publisherName = users[ticket['userId']] ?? 'Unknown';
         String companyName = userCompanies[ticket['userId']]?.isNotEmpty == true
@@ -352,8 +410,11 @@ class _TicketsScreenState extends State<TicketsScreen> {
   }
 
   Future<void> _exportCurrentView() async {
-    // Get the current filtered tickets
-    final allTickets = await _getFilteredTicketsStream().first;
+    // Reuse the currently loaded filtered tickets to avoid refetching every
+    // ticket and its files again just for export.
+    final allTickets = _allTickets.isNotEmpty
+        ? List<Map<String, dynamic>>.from(_allTickets)
+        : await _getFilteredTicketsStream().first;
     List<Map<String, dynamic>> ticketsToExport;
     if (selectAll) {
       ticketsToExport = allTickets;
@@ -469,10 +530,13 @@ class _TicketsScreenState extends State<TicketsScreen> {
   Stream<List<Map<String, dynamic>>> _getFilteredTicketsStream() async* {
     // Base query construction
     Query query = FirebaseFirestore.instance.collection(DbCollections.tickets);
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
 
     // Server-side filters
     if (widget.userId != null) {
       query = query.where('userId', isEqualTo: widget.userId);
+    } else if (_currentUserRole == UserRole.user && currentUserId != null) {
+      query = query.where('userId', isEqualTo: currentUserId);
     }
     if (selectedFilter == 'status' && selectedFilterValue != null) {
       query = query.where('status', isEqualTo: selectedFilterValue);
@@ -508,10 +572,17 @@ class _TicketsScreenState extends State<TicketsScreen> {
 
       DateTime? latestUploadDate;
       List<String> fileIds = [];
+      List<String> attachmentNames = [];
       int fileCount = 0;
 
       if (filesSnapshot.docs.isNotEmpty) {
         fileIds = filesSnapshot.docs.map((fileDoc) => fileDoc.id).toList();
+        attachmentNames = filesSnapshot.docs
+            .map(
+              (fileDoc) =>
+                  fileDoc.data()['fileName']?.toString() ?? 'Unknown File',
+            )
+            .toList();
         fileCount = filesSnapshot.docs.length;
 
         final latestFile = filesSnapshot.docs.first;
@@ -524,6 +595,9 @@ class _TicketsScreenState extends State<TicketsScreen> {
               .map((file) => file['fileId'] ?? '')
               .where((id) => id.isNotEmpty)
               .toList();
+          attachmentNames = files
+              .map((file) => file['fileName'] ?? 'Unknown File')
+              .toList();
           fileCount = files.length;
 
           if (files.isNotEmpty) {
@@ -533,6 +607,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
           debugPrint(
               'Error fetching files from storage for ticket ${ticketDoc.id}: $e');
           fileIds = [];
+          attachmentNames = [];
           fileCount = 0;
         }
       }
@@ -541,6 +616,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
         'ticketId': ticketDoc.id,
         'fileCount': fileCount,
         'fileIds': fileIds,
+        'attachmentNames': attachmentNames,
         'latestUploadDate': latestUploadDate,
       };
     });
@@ -551,6 +627,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
         result['ticketId'] as String: {
           'fileIds': result['fileIds'] as List<String>,
           'fileCount': result['fileCount'] as int,
+          'attachmentNames': result['attachmentNames'] as List<String>,
           'latestUploadDate': result['latestUploadDate'] as DateTime?,
         }
     };
@@ -563,9 +640,12 @@ class _TicketsScreenState extends State<TicketsScreen> {
         'id': doc.id,
         'fileIds': filesMap[doc.id]?['fileIds'] ?? <String>[],
         'fileCount': filesMap[doc.id]?['fileCount'] ?? 0,
+        'attachmentNames': filesMap[doc.id]?['attachmentNames'] ?? <String>[],
         'latestUploadDate': filesMap[doc.id]?['latestUploadDate'],
       };
     }).toList();
+
+    tickets.retainWhere(_canAccessTicket);
 
     // Apply client-side search filter
     if (searchQuery.isNotEmpty) {
@@ -709,6 +789,10 @@ class _TicketsScreenState extends State<TicketsScreen> {
   }
 
   Widget _buildTicketList() {
+    if (_isLoadingCurrentUser) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _getFilteredTicketsStream(),
       builder: (context, snapshot) {
@@ -742,7 +826,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                   String publisherName = users[ticket['userId']] ?? 'Unknown';
                   String companyName =
                       userCompanies[ticket['userId']]?.isNotEmpty == true
-                          ? userCompanies[ticket['userId']]!.first
+                          ? userCompanies[ticket['userId']]!.join(', ')
                           : '';
 
                   return Card(
@@ -1033,6 +1117,28 @@ class _TicketsScreenState extends State<TicketsScreen> {
   }
 
   Widget _buildAdminDropdown(String ticketId, String assignedAdminId) {
+    final assignedAdminName = admins.firstWhere(
+      (admin) => admin['id'] == assignedAdminId,
+      orElse: () => {'name': 'Unassigned'},
+    )['name'] as String;
+
+    if (!_isAdmin) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.grey[300],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          assignedAdminName,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    }
+
     if (admins.isEmpty) {
       return const Text('No admins available');
     }
@@ -1130,6 +1236,8 @@ class _TicketsScreenState extends State<TicketsScreen> {
     String? currentUserUid = FirebaseAuth.instance.currentUser?.uid;
     bool isAssignedToCurrentUser =
         selectedTicketData?['assignedAdminId'] == currentUserUid;
+    final canEditReference = _isAdmin;
+    final canEditStatus = _isAdmin || isAssignedToCurrentUser;
 
     return FutureBuilder<List<Map<String, String>>>(
       future: DataService.getTicketFiles(selectedTicketId!),
@@ -1230,22 +1338,27 @@ class _TicketsScreenState extends State<TicketsScreen> {
                 ),
               TextField(
                 controller: referenceController,
+                readOnly: !canEditReference,
                 decoration: InputDecoration(
                   labelText: 'Reference',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.save),
-                    onPressed: () {
-                      _saveReference(
-                          selectedTicketId!, referenceController.text);
-                    },
-                  ),
+                  suffixIcon: canEditReference
+                      ? IconButton(
+                          icon: const Icon(Icons.save),
+                          onPressed: () {
+                            _saveReference(
+                                selectedTicketId!, referenceController.text);
+                          },
+                        )
+                      : null,
                 ),
-                onSubmitted: (value) {
-                  _saveReference(selectedTicketId!, value);
-                },
+                onSubmitted: canEditReference
+                    ? (value) {
+                        _saveReference(selectedTicketId!, value);
+                      }
+                    : null,
               ),
               const SizedBox(height: 16),
               Container(
@@ -1321,7 +1434,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                     borderRadius: BorderRadius.circular(15),
                   ),
                 ),
-                onChanged: (isAssignedToCurrentUser)
+                onChanged: (canEditStatus)
                     ? (String? newValue) {
                         _updateTicketStatus(selectedTicketId!, newValue!);
                       }

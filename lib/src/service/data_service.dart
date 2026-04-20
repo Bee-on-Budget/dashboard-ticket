@@ -39,7 +39,7 @@ class DataService {
         'username': user.username,
         'email': user.email,
         'phoneNumber': user.phoneNumber,
-        'role': user.role.toString(),
+        'role': user.role.storageValue,
         'paymentMethods': user.paymentMethods.map((e) => e.toString()).toList(),
         'companies': user.companies,
         'isActive': user.isActive,

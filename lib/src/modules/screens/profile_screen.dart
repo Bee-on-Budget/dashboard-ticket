@@ -314,10 +314,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ? Colors.grey[800]
                                   : Colors.grey[100],
                             ),
-                            items: [UserRole.admin, UserRole.user]
+                            items: [
+                              UserRole.admin,
+                              UserRole.user,
+                              UserRole.accountent,
+                            ]
                                 .map((role) => DropdownMenuItem(
                                       value: role,
-                                      child: Text(role.toString()),
+                                      child: Text(role.displayName),
                                     ))
                                 .toList(),
                             onChanged: (role) {
@@ -713,6 +717,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       itemBuilder: (context, idx) {
                         final user = filteredUsers[idx];
                         final isExpanded = _expansionStates[user.id] ?? false;
+                        final roleBadgeColor = user.role == UserRole.admin
+                            ? Theme.of(context).colorScheme.primary
+                            : user.role == UserRole.accountent
+                                ? Colors.orange
+                                : Theme.of(context).colorScheme.secondary;
 
                         return Container(
                           margin: const EdgeInsets.only(bottom: 12),
@@ -785,29 +794,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 8, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: user.role.toString() == 'admin'
-                                          ? Theme.of(context)
-                                              .colorScheme
-                                              .primary
-                                              .withOpacity(0.1)
-                                          : Theme.of(context)
-                                              .colorScheme
-                                              .secondary
-                                              .withOpacity(0.1),
+                                      color: roleBadgeColor.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
-                                      user.role.toString(),
+                                      user.role.displayName,
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w500,
-                                        color: user.role.toString() == 'admin'
-                                            ? Theme.of(context)
-                                                .colorScheme
-                                                .primary
-                                            : Theme.of(context)
-                                                .colorScheme
-                                                .secondary,
+                                        color: roleBadgeColor,
                                       ),
                                     ),
                                   ),

@@ -2,15 +2,18 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../config/db_collections.dart';
+import '../../config/enums/user_role.dart';
 
 class SearchableUserSelection extends StatefulWidget {
   final List<String> initialSelectedUserIds;
   final ValueChanged<List<String>> onSelectionChanged;
+  final List<UserRole> allowedRoles;
 
   const SearchableUserSelection({
     Key? key,
     this.initialSelectedUserIds = const [],
     required this.onSelectionChanged,
+    this.allowedRoles = const [UserRole.user, UserRole.accountent],
   }) : super(key: key);
 
   @override
@@ -60,17 +63,31 @@ class _SearchableUserSelectionState extends State<SearchableUserSelection> {
       final allUsers = snap.docs
           .map((d) {
             final data = d.data() as Map<String, dynamic>;
+            final role = UserRole.fromString(data['role']?.toString());
             return {
               'id': d.id,
-              'name': (data['name'] ?? data['displayName'] ?? '').toString(),
+              'name': (data['username'] ??
+                      data['name'] ??
+                      data['displayName'] ??
+                      '')
+                  .toString(),
               'email': (data['email'] ?? '').toString(),
               'nameLower': (data['nameLower'] ??
-                      (data['name'] ?? '').toString().toLowerCase())
+                      (data['username'] ??
+                              data['name'] ??
+                              data['displayName'] ??
+                              '')
+                          .toString()
+                          .toLowerCase())
                   .toString(),
               'isActive': data['isActive'] == true,
+              'role': role,
+              'roleLabel': role.displayName,
             };
           })
-          .where((u) => u['isActive'] == true)
+          .where((u) =>
+              u['isActive'] == true &&
+              widget.allowedRoles.contains(u['role'] as UserRole))
           .toList();
 
       // Sort by name client-side
@@ -112,19 +129,33 @@ class _SearchableUserSelectionState extends State<SearchableUserSelection> {
 
       final allResults = snap.docs.map((d) {
         final data = d.data() as Map<String, dynamic>;
+        final role = UserRole.fromString(data['role']?.toString());
         return {
           'id': d.id,
-          'name': (data['name'] ?? data['displayName'] ?? '').toString(),
+          'name': (data['username'] ??
+                  data['name'] ??
+                  data['displayName'] ??
+                  '')
+              .toString(),
           'email': (data['email'] ?? '').toString(),
           'nameLower': (data['nameLower'] ??
-                  (data['name'] ?? '').toString().toLowerCase())
+                  (data['username'] ??
+                          data['name'] ??
+                          data['displayName'] ??
+                          '')
+                      .toString()
+                      .toLowerCase())
               .toString(),
           'isActive': true,
+          'role': role,
+          'roleLabel': role.displayName,
         };
       }).where((u) {
         final nl = (u['nameLower'] as String).toLowerCase();
         final em = (u['email'] as String).toLowerCase();
-        return nl.contains(lower) || em.contains(lower);
+        final role = u['role'] as UserRole;
+        return widget.allowedRoles.contains(role) &&
+            (nl.contains(lower) || em.contains(lower));
       }).toList();
 
       // Sort by name client-side
@@ -188,6 +219,7 @@ class _SearchableUserSelectionState extends State<SearchableUserSelection> {
                         final id = user['id'] as String;
                         final name = user['name'] as String;
                         final email = user['email'] as String;
+                        final roleLabel = user['roleLabel'] as String;
                         final selected = _selectedIds.contains(id);
                         return ListTile(
                           leading: CircleAvatar(
@@ -196,7 +228,9 @@ class _SearchableUserSelectionState extends State<SearchableUserSelection> {
                             ),
                           ),
                           title: Text(name),
-                          subtitle: Text(email),
+                          subtitle: Text(
+                            email.isEmpty ? roleLabel : '$email • $roleLabel',
+                          ),
                           trailing: Checkbox(
                             value: selected,
                             onChanged: (_) => _toggleSelect(id),

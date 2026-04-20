@@ -1,7 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../firebase_options.dart';
 import '../config/db_collections.dart';
+import '../config/enums/user_role.dart';
 
 class AuthService {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
@@ -16,10 +19,20 @@ class AuthService {
     required List<String> paymentMethods,
     required String role,
   }) async {
+    FirebaseApp? secondaryApp;
+    FirebaseAuth? secondaryAuth;
+
     try {
-      // Create user with email and password
+      secondaryApp = await Firebase.initializeApp(
+        name: 'user-creation-${DateTime.now().microsecondsSinceEpoch}',
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
+
+      // Create the user on a secondary auth instance so the current admin
+      // session stays signed in on the main app.
       final UserCredential userCredential =
-          await _firebaseAuth.createUserWithEmailAndPassword(
+          await secondaryAuth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
@@ -39,6 +52,17 @@ class AuthService {
       return e.message; // Return the actual error message
     } catch (e) {
       return e.toString(); // Handle any other exceptions
+    } finally {
+      if (secondaryAuth != null) {
+        try {
+          await secondaryAuth.signOut();
+        } catch (_) {}
+      }
+      if (secondaryApp != null) {
+        try {
+          await secondaryApp.delete();
+        } catch (_) {}
+      }
     }
   }
 
@@ -81,7 +105,7 @@ class AuthService {
           'username': username,
           'companies': companies,
           'paymentMethods': paymentMethods,
-          'role': role,
+          'role': UserRole.fromString(role).storageValue,
           'isActive': true, // Ensure isActive is set to true by default
           'createdAt': FieldValue.serverTimestamp(),
         });

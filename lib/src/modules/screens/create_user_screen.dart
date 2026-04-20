@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../config/db_collections.dart';
+import '../../config/enums/user_role.dart';
 import '../../service/auth_service.dart';
 
 class CreateUserScreen extends StatefulWidget {
@@ -18,9 +20,17 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
 
   bool _isPasswordVisible = false;
   bool _isEmailSelected = true;
+  bool _isCheckingPermissions = true;
 
-  String _selectedRole = 'user';
+  String _selectedRole = UserRole.user.storageValue;
+  UserRole _currentUserRole = UserRole.unknown;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentUserRole();
+  }
 
   @override
   void dispose() {
@@ -29,6 +39,41 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     _phoneController.dispose();
     _usernameController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCurrentUserRole() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      if (mounted) {
+        setState(() {
+          _currentUserRole = UserRole.unknown;
+          _isCheckingPermissions = false;
+        });
+      }
+      return;
+    }
+
+    try {
+      final userDoc = await _firestore
+          .collection(DbCollections.users)
+          .doc(currentUser.uid)
+          .get();
+
+      if (mounted) {
+        setState(() {
+          _currentUserRole =
+              UserRole.fromString(userDoc.data()?['role']?.toString());
+          _isCheckingPermissions = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _currentUserRole = UserRole.unknown;
+          _isCheckingPermissions = false;
+        });
+      }
+    }
   }
 
   Future<void> _registerUser() async {
@@ -88,7 +133,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     _passwordController.clear();
     _phoneController.clear();
     setState(() {
-      _selectedRole = 'user';
+      _selectedRole = UserRole.user.storageValue;
     });
   }
 
@@ -134,6 +179,31 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isCheckingPermissions) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_currentUserRole != UserRole.admin) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Create User'),
+          backgroundColor: const Color(0xFF44564A),
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Text(
+              'Only admins can create users or accountents.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
@@ -292,6 +362,12 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   }
 
   Widget _buildRoleDropdown() {
+    final availableRoles = [
+      UserRole.user,
+      UserRole.accountent,
+      UserRole.admin,
+    ];
+
     return DropdownButtonFormField<String>(
       value: _selectedRole,
       decoration: InputDecoration(
@@ -305,10 +381,10 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
           borderSide: BorderSide.none,
         ),
       ),
-      items: ['user', 'admin']
+      items: availableRoles
           .map((role) => DropdownMenuItem(
-                value: role,
-                child: Text(role),
+                value: role.storageValue,
+                child: Text(role.displayName),
               ))
           .toList(),
       onChanged: (role) => setState(() => _selectedRole = role!),
