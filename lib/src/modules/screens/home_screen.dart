@@ -4,19 +4,82 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_dashboard/src/config/db_collections.dart';
 import 'package:flutter_dashboard/src/config/enums/ticket_status.dart';
+import 'package:flutter_dashboard/src/config/enums/user_role.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_dashboard/src/modules/screens/CreateCompanyScreen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  Future<Map<String, int>> _fetchStatistics() async {
-    final snapshot = await FirebaseFirestore.instance
-        .collection(DbCollections.tickets)
-        .get();
-    final tickets = snapshot.docs;
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
 
+class _HomeScreenState extends State<HomeScreen> {
+  late final Future<_DashboardData> _dashboardDataFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _dashboardDataFuture = _loadDashboardData();
+  }
+
+  Future<_DashboardData> _loadDashboardData() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      return const _DashboardData.empty();
+    }
+
+    final firestore = FirebaseFirestore.instance;
+    final userDoc = await firestore
+        .collection(DbCollections.users)
+        .doc(currentUser.uid)
+        .get();
+    final userData = userDoc.data() ?? <String, dynamic>{};
+    final currentUserRole = UserRole.fromString(userData['role']?.toString());
+    final currentUserCompanies =
+        List<String>.from(userData['companies'] ?? const []);
+
+    final ticketsSnapshot =
+        await firestore.collection(DbCollections.tickets).get();
+    final usersSnapshot = await firestore.collection(DbCollections.users).get();
+
+    final userCompanies = <String, List<String>>{
+      for (final doc in usersSnapshot.docs)
+        doc.id: List<String>.from(doc.data()['companies'] ?? const []),
+    };
+
+    final accessibleTickets = ticketsSnapshot.docs.where((ticket) {
+      if (currentUserRole == UserRole.admin) {
+        return true;
+      }
+
+      final publisherId = ticket.data()['userId']?.toString();
+      if (publisherId == null || publisherId.isEmpty) {
+        return false;
+      }
+
+      if (currentUserRole == UserRole.user) {
+        return publisherId == currentUser.uid;
+      }
+
+      if (currentUserRole == UserRole.accountent) {
+        final publisherCompanies = userCompanies[publisherId] ?? const [];
+        return publisherCompanies
+            .toSet()
+            .intersection(currentUserCompanies.toSet())
+            .isNotEmpty;
+      }
+
+      return false;
+    }).toList();
+
+    return _DashboardData.fromTickets(accessibleTickets);
+  }
+
+  Map<String, int> _buildStatistics(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> tickets) {
     return {
       'total': tickets.length,
       'open': tickets.where((t) => t['status'] == 'Open').length,
@@ -27,12 +90,8 @@ class HomeScreen extends StatelessWidget {
     };
   }
 
-  Future<List<PieChartSectionData>> _fetchTicketStatusData() async {
-    final snapshot = await FirebaseFirestore.instance
-        .collection(DbCollections.tickets)
-        .get();
-    final tickets = snapshot.docs;
-
+  List<PieChartSectionData> _buildTicketStatusData(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> tickets) {
     final statusCounts = {
       'Open': 0,
       'In Progress': 0,
@@ -91,12 +150,8 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Future<List<Map<String, dynamic>>> _fetchTicketsOverTime() async {
-    final snapshot = await FirebaseFirestore.instance
-        .collection(DbCollections.tickets)
-        .get();
-    final tickets = snapshot.docs;
-
+  List<Map<String, dynamic>> _buildTicketsOverTime(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> tickets) {
     final ticketsByDate = <String, int>{};
     final dateFormat = DateFormat('MMM dd');
 
@@ -136,9 +191,8 @@ class HomeScreen extends StatelessWidget {
             _buildHeaderSection(theme),
             const SizedBox(height: 24),
 
-            // Statistics Cards
-            FutureBuilder<Map<String, int>>(
-              future: _fetchStatistics(),
+            FutureBuilder<_DashboardData>(
+              future: _dashboardDataFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return _buildLoadingIndicator();
@@ -146,41 +200,40 @@ class HomeScreen extends StatelessWidget {
                 if (snapshot.hasError) {
                   return _buildErrorWidget(snapshot.error.toString());
                 }
-                return _buildStatisticsGrid(snapshot.data!, cardColor, theme);
+                final data = snapshot.data ?? const _DashboardData.empty();
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildStatisticsGrid(data.stats, cardColor, theme),
+                    const SizedBox(height: 32),
+                    _buildSectionTitle('Ticket Status Overview', theme),
+                    const SizedBox(height: 16),
+                    _buildEnhancedPieChart(data.statusData, theme),
+                    const SizedBox(height: 32),
+                    _buildSectionTitle('Tickets Timeline', theme),
+                    const SizedBox(height: 16),
+                    _buildEnhancedLineChart(data.timelineData, theme),
+                  ],
+                );
               },
             ),
             const SizedBox(height: 32),
-
-            // Ticket Status Distribution
-            _buildSectionTitle('Ticket Status Overview', theme),
-            const SizedBox(height: 16),
-            FutureBuilder<List<PieChartSectionData>>(
-              future: _fetchTicketStatusData(),
+            FutureBuilder<_DashboardData>(
+              future: _dashboardDataFuture,
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return _buildLoadingIndicator();
+                if (snapshot.connectionState == ConnectionState.waiting ||
+                    !snapshot.hasData) {
+                  return const SizedBox.shrink();
                 }
-                if (snapshot.hasError) {
-                  return _buildErrorWidget(snapshot.error.toString());
-                }
-                return _buildEnhancedPieChart(snapshot.data!, theme);
-              },
-            ),
-            const SizedBox(height: 32),
-
-            // Tickets Over Time
-            _buildSectionTitle('Tickets Timeline', theme),
-            const SizedBox(height: 16),
-            FutureBuilder<List<Map<String, dynamic>>>(
-              future: _fetchTicketsOverTime(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return _buildLoadingIndicator();
-                }
-                if (snapshot.hasError) {
-                  return _buildErrorWidget(snapshot.error.toString());
-                }
-                return _buildEnhancedLineChart(snapshot.data!, theme);
+                final totalVisible = snapshot.data!.stats['total'] ?? 0;
+                return Text(
+                  'Visible tickets: $totalVisible',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface.withOpacity(0.75),
+                  ),
+                );
               },
             ),
           ],
@@ -521,6 +574,135 @@ class HomeScreen extends StatelessWidget {
         'Error: $error',
         style: const TextStyle(color: Colors.red),
       ),
+    );
+  }
+}
+
+class _DashboardData {
+  final Map<String, int> stats;
+  final List<PieChartSectionData> statusData;
+  final List<Map<String, dynamic>> timelineData;
+
+  const _DashboardData({
+    required this.stats,
+    required this.statusData,
+    required this.timelineData,
+  });
+
+  const _DashboardData.empty()
+      : stats = const {
+          'total': 0,
+          'open': 0,
+          'in_progress': 0,
+          'closed': 0,
+          'rework': 0,
+          'canceled': 0,
+        },
+        statusData = const [],
+        timelineData = const [];
+
+  factory _DashboardData.fromTickets(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> tickets) {
+    final stats = {
+      'total': tickets.length,
+      'open': tickets.where((t) => t['status'] == 'Open').length,
+      'in_progress': tickets.where((t) => t['status'] == 'In Progress').length,
+      'closed': tickets.where((t) => t['status'] == 'Closed').length,
+      'rework': tickets.where((t) => t['status'] == 'Need Re-work').length,
+      'canceled': tickets.where((t) => t['status'] == 'Canceled').length,
+    };
+
+    final statusCounts = {
+      'Open': 0,
+      'In Progress': 0,
+      'Closed': 0,
+      'needReWork': 0,
+      'canceled': 0,
+    };
+    for (final ticket in tickets) {
+      final status = ticket['status'] as String;
+      statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+    }
+
+    final totalTickets = tickets.length;
+    final statusData = totalTickets == 0
+        ? const <PieChartSectionData>[]
+        : [
+            _buildSectionData(
+              title: 'Open',
+              value: statusCounts['Open']!,
+              total: totalTickets,
+              color: TicketStatus.open.getColor(),
+            ),
+            _buildSectionData(
+              title: 'In Progress',
+              value: statusCounts['In Progress']!,
+              total: totalTickets,
+              color: TicketStatus.inProgress.getColor(),
+            ),
+            _buildSectionData(
+              title: 'Closed',
+              value: statusCounts['Closed']!,
+              total: totalTickets,
+              color: TicketStatus.closed.getColor(),
+            ),
+            _buildSectionData(
+              title: 'Rework',
+              value: statusCounts['needReWork']!,
+              total: totalTickets,
+              color: TicketStatus.needReWork.getColor(),
+            ),
+            _buildSectionData(
+              title: 'Canceled',
+              value: statusCounts['canceled']!,
+              total: totalTickets,
+              color: TicketStatus.canceled.getColor(),
+            ),
+          ];
+
+    final ticketsByDate = <String, int>{};
+    final dateFormat = DateFormat('MMM dd');
+    for (final ticket in tickets) {
+      final createdDate = ticket['createdDate'];
+      if (createdDate is! Timestamp) continue;
+      final dateKey = dateFormat.format(createdDate.toDate());
+      ticketsByDate[dateKey] = (ticketsByDate[dateKey] ?? 0) + 1;
+    }
+    final timelineData = ticketsByDate.entries
+        .map((e) => {'date': e.key as String, 'count': e.value as int})
+        .toList()
+      ..sort((a, b) {
+        final dateA = a['date'] as String;
+        final dateB = b['date'] as String;
+        return dateA.compareTo(dateB);
+      });
+
+    return _DashboardData(
+      stats: stats,
+      statusData: statusData,
+      timelineData: timelineData,
+    );
+  }
+
+  static PieChartSectionData _buildSectionData({
+    required String title,
+    required int value,
+    required int total,
+    required Color color,
+  }) {
+    final percentage = total == 0 ? '0.0' : (value / total * 100).toStringAsFixed(1);
+    return PieChartSectionData(
+      value: value.toDouble(),
+      color: color,
+      title: '$value\n($percentage%)',
+      radius: 60,
+      titleStyle: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+      ),
+      badgeWidget: _StatusBadge(title: title, color: color),
+      badgePositionPercentageOffset: 1.6,
     );
   }
 }

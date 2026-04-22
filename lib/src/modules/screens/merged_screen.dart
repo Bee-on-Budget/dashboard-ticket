@@ -88,6 +88,13 @@ class MergedScreenState extends State<MergedScreen> {
       ];
     }
 
+    if (_currentUserRole == UserRole.accountent) {
+      return const [
+        HomeScreen(),
+        TicketsScreen(),
+      ];
+    }
+
     return const [
       TicketsScreen(),
     ];
@@ -97,6 +104,11 @@ class MergedScreenState extends State<MergedScreen> {
   Widget build(BuildContext context) {
     final pages = _pages;
     final currentIndex = _currentIndex >= pages.length ? 0 : _currentIndex;
+    final appBarTitle = _currentUserRole == UserRole.admin
+        ? 'Admin Panel'
+        : _currentUserRole == UserRole.accountent && currentIndex == 0
+            ? 'Dashboard'
+            : 'Tickets';
 
     return Scaffold(
       appBar: AppBar(
@@ -104,9 +116,7 @@ class MergedScreenState extends State<MergedScreen> {
           children: [
             Expanded(
               child: Text(
-                _currentUserRole == UserRole.admin
-                    ? 'Admin Panel'
-                    : 'Tickets',
+                appBarTitle,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 20,
@@ -208,6 +218,9 @@ class MergedScreenState extends State<MergedScreen> {
                   _buildUsersCategory(),
                   _buildDrawerItem(Icons.list, 'Tickets', 2),
                   _buildDrawerItem(Icons.business, 'Companies', 4),
+                ] else if (_currentUserRole == UserRole.accountent) ...[
+                  _buildDrawerItem(Icons.dashboard, 'Dashboard', 0),
+                  _buildDrawerItem(Icons.list, 'Tickets', 1),
                 ] else
                   _buildDrawerItem(Icons.list, 'Tickets', 0),
               ],
