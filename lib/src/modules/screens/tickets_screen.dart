@@ -178,6 +178,13 @@ class _TicketsScreenState extends State<TicketsScreen> {
 
   bool get _isAdmin => _currentUserRole == UserRole.admin;
 
+  // Admins and accountents can assign tickets to an admin. Accountents only
+  // see tickets for their own companies (see _canAccessTicket), so this stays
+  // scoped correctly.
+  bool get _canAssign =>
+      _currentUserRole == UserRole.admin ||
+      _currentUserRole == UserRole.accountent;
+
   bool _canAccessTicket(Map<String, dynamic> ticket) {
     if (_isAdmin || widget.userId != null) {
       return true;
@@ -1122,7 +1129,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
       orElse: () => {'name': 'Unassigned'},
     )['name'] as String;
 
-    if (!_isAdmin) {
+    if (!_canAssign) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
@@ -1511,6 +1518,18 @@ class _TicketsScreenState extends State<TicketsScreen> {
       'assignedAdminId': adminId,
       'lastUpdate': FieldValue.serverTimestamp(),
     }).then((_) {
+      if (!mounted) return;
+      // The tickets list is a one-time fetch, not a live snapshot stream, so
+      // rebuild to re-fetch and reflect the new assignment without a page
+      // refresh. Also update the open detail panel if it's this ticket.
+      setState(() {
+        for (final ticket in _allTickets) {
+          if (ticket['id'] == ticketId) ticket['assignedAdminId'] = adminId;
+        }
+        if (selectedTicketData?['id'] == ticketId) {
+          selectedTicketData!['assignedAdminId'] = adminId;
+        }
+      });
       _showSnackBar(adminId == null
           ? 'Admin unassigned successfully'
           : 'Admin assigned successfully');
