@@ -82,9 +82,11 @@ class _TicketsScreenState extends State<TicketsScreen> {
 
   Future<void> _fetchAdmins() async {
     try {
+      // Assignable handlers: admins and accountents (active only).
       final adminSnapshot = await FirebaseFirestore.instance
           .collection(DbCollections.users)
-          .where('role', whereIn: ['admin', 'Admin'])
+          .where('role',
+              whereIn: ['admin', 'Admin', 'accountent', 'accountant'])
           .where('isActive', isEqualTo: true)
           .get();
 
