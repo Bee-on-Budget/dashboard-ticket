@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
+import 'package:archive/archive.dart';
 import '../models/company.dart';
 import '../models/user.dart';
 import '../../service/data_service.dart';
 import '../../config/db_collections.dart';
+import '../../utils/file_saver/file_saver.dart';
 import 'searchable_user_selection.dart';
 import 'CreateCompanyScreen.dart';
 
@@ -1093,6 +1096,187 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
     );
   }
 
+  // Sanitize a string so it is safe to use as a file/folder name inside the zip.
+  String _sanitizeName(String name) {
+    final cleaned = name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
+    return cleaned.isEmpty ? 'unnamed' : cleaned;
+  }
+
+  Future<void> _downloadCompanyAttachments(Company company) async {
+    // Progress state shared with the dialog.
+    final progress = ValueNotifier<String>('Collecting attachments...');
+    bool cancelled = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Downloading — ${company.name}'),
+        content: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 3),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: ValueListenableBuilder<String>(
+                valueListenable: progress,
+                builder: (_, value, __) => Text(value),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              cancelled = true;
+              Navigator.pop(dialogContext);
+            },
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    try {
+      final attachments =
+          await DataService.getCompanyAttachments(company.name);
+
+      if (cancelled) return;
+
+      if (attachments.isEmpty) {
+        if (mounted) Navigator.pop(context); // close progress dialog
+        _showMessage(
+          'No attachments found for "${company.name}".',
+          Colors.orange,
+        );
+        return;
+      }
+
+      final archive = Archive();
+      final usedNames = <String>{};
+      int downloaded = 0;
+      int failed = 0;
+      int completed = 0;
+
+      // Reserve a unique path inside the zip for a file. Runs synchronously
+      // (no await), so it can't race even while downloads run concurrently.
+      String reservePath(Map<String, String> file) {
+        final folder = _sanitizeName(file['ticketTitle'] ?? file['ticketId']!);
+        final fileName = _sanitizeName(file['fileName']!);
+        var path = '$folder/$fileName';
+        var suffix = 1;
+        while (usedNames.contains(path)) {
+          final dot = fileName.lastIndexOf('.');
+          final base = dot > 0 ? fileName.substring(0, dot) : fileName;
+          final ext = dot > 0 ? fileName.substring(dot) : '';
+          path = '$folder/${base}_${suffix++}$ext';
+        }
+        usedNames.add(path);
+        return path;
+      }
+
+      // Download with a bounded pool of concurrent workers instead of one at a
+      // time. Firebase Storage is served over HTTP/2, which multiplexes these
+      // requests, so throughput scales with the pool size.
+      const concurrency = 10;
+      var nextIndex = 0;
+
+      Future<void> worker() async {
+        while (true) {
+          if (cancelled) return;
+          final i = nextIndex++; // synchronous increment -> no race
+          if (i >= attachments.length) return;
+          final file = attachments[i];
+
+          try {
+            final response = await http
+                .get(Uri.parse(file['url']!))
+                .timeout(const Duration(seconds: 30));
+            if (response.statusCode == 200) {
+              // Store without compression: attachments are mostly already
+              // compressed (jpeg/png/pdf), so DEFLATE adds almost no size but
+              // huge CPU cost that would freeze the UI. STORE is near-instant.
+              final entry = ArchiveFile(reservePath(file),
+                  response.bodyBytes.length, response.bodyBytes)
+                ..compress = false;
+              archive.addFile(entry);
+              downloaded++;
+            } else {
+              failed++;
+            }
+          } catch (_) {
+            failed++;
+          }
+
+          completed++;
+          progress.value =
+              'Downloaded $completed of ${attachments.length}...';
+        }
+      }
+
+      final workerCount =
+          concurrency < attachments.length ? concurrency : attachments.length;
+      await Future.wait(List.generate(workerCount, (_) => worker()));
+
+      if (cancelled) return;
+
+      if (downloaded == 0) {
+        if (mounted) Navigator.pop(context);
+        _showMessage(
+          'Could not download any attachments for "${company.name}".',
+          Colors.red,
+        );
+        return;
+      }
+
+      progress.value = 'Packaging $downloaded files...';
+      // Yield a frame so the dialog repaints before the (synchronous) encode.
+      await Future.delayed(const Duration(milliseconds: 50));
+      final zipBytes = ZipEncoder().encode(archive);
+      if (zipBytes == null) {
+        if (mounted) Navigator.pop(context);
+        _showMessage('Failed to create the zip archive.', Colors.red);
+        return;
+      }
+
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final zipName =
+          '${_sanitizeName(company.name)}_attachments_$timestamp.zip';
+      final savedPath = await saveFile(zipName, zipBytes);
+
+      if (mounted) Navigator.pop(context); // close progress dialog
+
+      final skipped = failed > 0 ? ' ($failed could not be downloaded)' : '';
+      _showMessage(
+        savedPath == null
+            ? 'Downloaded $downloaded attachment(s)$skipped.'
+            : 'Saved $downloaded attachment(s)$skipped to:\n$savedPath',
+        Colors.green,
+      );
+    } catch (e) {
+      if (mounted) Navigator.pop(context); // close progress dialog
+      _showMessage('Error downloading attachments: $e', Colors.red);
+    } finally {
+      progress.dispose();
+    }
+  }
+
+  void _showMessage(String message, Color color) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+      ),
+    );
+  }
+
   Future<void> _deleteCompany(Company company) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -1596,6 +1780,25 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                                             icon: const Icon(Icons.edit),
                                             label: const Text('Edit Company'),
                                           ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        IconButton.filledTonal(
+                                          onPressed: () =>
+                                              _downloadCompanyAttachments(
+                                                  company),
+                                          icon: const Icon(
+                                              Icons.download_for_offline),
+                                          style: IconButton.styleFrom(
+                                            backgroundColor: Theme.of(context)
+                                                .colorScheme
+                                                .primary
+                                                .withOpacity(0.1),
+                                            foregroundColor: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                          ),
+                                          tooltip:
+                                              'Download all attachments (zip)',
                                         ),
                                         const SizedBox(width: 12),
                                         IconButton.filledTonal(

@@ -255,6 +255,68 @@ class DataService {
     });
   }
 
+  // Gather every attachment across all tickets that belong to a company.
+  //
+  // Relationship: ticket.userId -> user.companies (by name) -> company.name.
+  // Returns one entry per file with: ticketId, ticketTitle, fileName, url.
+  static Future<List<Map<String, String>>> getCompanyAttachments(
+      String companyName) async {
+    // 1. Find all users assigned to this company (active or not, so we don't
+    //    miss tickets published by deactivated users).
+    final usersSnapshot = await _firestore
+        .collection(DbCollections.users)
+        .where('companies', arrayContains: companyName)
+        .get();
+
+    final userIds = usersSnapshot.docs.map((doc) => doc.id).toList();
+    if (userIds.isEmpty) return [];
+
+    // 2. Find all tickets published by those users. Firestore `whereIn` is
+    //    capped at 30 values, so split into chunks and run them in parallel.
+    final chunks = <List<String>>[];
+    for (var i = 0; i < userIds.length; i += 30) {
+      chunks.add(userIds.sublist(
+        i,
+        i + 30 > userIds.length ? userIds.length : i + 30,
+      ));
+    }
+    final ticketSnapshots = await Future.wait(chunks.map((chunk) => _firestore
+        .collection(DbCollections.tickets)
+        .where('userId', whereIn: chunk)
+        .get()));
+    final ticketDocs =
+        ticketSnapshots.expand((snapshot) => snapshot.docs).toList();
+    if (ticketDocs.isEmpty) return [];
+
+    // 3. Read the files subcollection of each ticket, in parallel.
+    final results = await Future.wait(ticketDocs.map((ticketDoc) async {
+      final ticketId = ticketDoc.id;
+      final ticketTitle =
+          (ticketDoc.data()['title'] as String?) ?? ticketId;
+
+      final filesSnapshot = await _firestore
+          .collection(DbCollections.tickets)
+          .doc(ticketId)
+          .collection('files')
+          .get();
+
+      return filesSnapshot.docs.map((fileDoc) {
+        final data = fileDoc.data();
+        return {
+          'ticketId': ticketId,
+          'ticketTitle': ticketTitle,
+          'fileName': (data['fileName'] as String?) ?? fileDoc.id,
+          'url': (data['url'] as String?) ?? '',
+        };
+      }).toList();
+    }));
+
+    return results
+        .expand((files) => files)
+        .where((file) => file['url']!.isNotEmpty)
+        .toList();
+  }
+
   // Company methods
   static Stream<List<Company>> getCompanies() {
     return _firestore
